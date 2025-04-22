@@ -60,6 +60,7 @@ import {
   kubectlRolloutSchema,
 } from "./tools/kubectl-rollout.js";
 import { registerPromptHandlers } from "./prompts/index.js";
+import { execInPod, execInPodSchema } from "./tools/exec_in_pod.js";
 
 // Check if non-destructive tools only mode is enabled
 const nonDestructiveTools =
@@ -450,16 +451,6 @@ server.setRequestHandler(
           );
         }
 
-        case "describe_service": {
-          return await describeService(
-            k8sManager,
-            input as {
-              name: string;
-              namespace?: string;
-            }
-          );
-        }
-
         case "exec_in_pod": {
           return await execInPod(
             k8sManager,
@@ -471,31 +462,6 @@ server.setRequestHandler(
             }
           );
         }
-
-        case "describe_service": {
-          return await describeService(
-            k8sManager,
-            input as {
-              name: string;
-              namespace?: string;
-            }
-          );
-        }
-
-        case "exec_in_pod": {
-          return await execInPod(
-            k8sManager,
-            input as {
-              name: string;
-              namespace?: string;
-              command: string | string[];
-              container?: string;
-            }
-          );
-        }
-
-=======
->>>>>>> 06df868 (Integrate unified kubectl commands into server handler)
         default:
           throw new McpError(ErrorCode.InvalidRequest, `Unknown tool: ${name}`);
       }
