@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { CreatePodResponseSchema, DeletePodResponseSchema, ListPodsResponseSchema } from "../src/models/response-schemas.js";
+import { CreatePodResponseSchema, DeletePodResponseSchema, ExecInPodResponseSchema, ListPodsResponseSchema } from "../src/models/response-schemas.js";
 
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -86,7 +86,7 @@ describe("exec_in_pod tool", () => {
           },
         },
       },
-      ListPodsResponseSchema
+      ExecInPodResponseSchema
     );
     expect(result.content[0].type).toBe("text");
     expect(result.content[0].text).toContain("hello-world");
@@ -119,7 +119,7 @@ describe("exec_in_pod tool", () => {
           },
         },
       },
-      ListPodsResponseSchema
+      ExecInPodResponseSchema
     );
     expect(result.content[0].type).toBe("text");
     expect(result.content[0].text).toContain("string-form-test");
@@ -140,7 +140,7 @@ describe("exec_in_pod tool", () => {
             },
           },
         },
-        ListPodsResponseSchema
+        ExecInPodResponseSchema
       );
     } catch (e: any) {
       errorCaught = true;
@@ -165,7 +165,7 @@ describe("exec_in_pod tool", () => {
             },
           },
         },
-        ListPodsResponseSchema
+        ExecInPodResponseSchema
       );
     } catch (e: any) {
       errorCaught = true;
