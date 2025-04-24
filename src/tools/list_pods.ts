@@ -23,7 +23,7 @@ export async function listPods(
   const pods = body.items.map((pod: k8s.V1Pod) => ({
     name: pod.metadata?.name || "",
     namespace: pod.metadata?.namespace || "",
-    status: pod.status?.phase,
+    phase: pod.status?.phase,
     createdAt: pod.metadata?.creationTimestamp,
   }));
 
