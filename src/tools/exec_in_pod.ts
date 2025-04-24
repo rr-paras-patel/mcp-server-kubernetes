@@ -49,6 +49,11 @@ export const execInPodSchema = {
         description: "Shell to use for command execution (e.g. '/bin/sh', '/bin/bash'). If not provided, will use command as-is.",
         optional: true,
       },
+      timeout: {
+        type: "number",
+        description: "Timeout for command - 60000 milliseconds if not specified",
+        optional: true,
+      },
     },
     required: ["name", "command"],
   },
@@ -67,6 +72,7 @@ export async function execInPod(
     command: string | string[];
     container?: string;
     shell?: string;
+    timeout?: number;
   }
 ): Promise<{ content: { type: string; text: string }[] }> {
   const namespace = input.namespace || "default";
@@ -113,6 +119,7 @@ export async function execInPod(
     // Add a timeout to avoid hanging forever if exec never returns
     await new Promise<void>((resolve, reject) => {
       let finished = false;
+      const timeoutMs = input.timeout || 60000;
       const timeout = setTimeout(() => {
         if (!finished) {
           finished = true;
@@ -123,7 +130,7 @@ export async function execInPod(
             )
           );
         }
-      }, 20000); // 20 seconds
+      }, timeoutMs);
 
       console.log("[exec_in_pod] Calling exec.exec with params:", {
         namespace,
