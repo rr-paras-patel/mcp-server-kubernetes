@@ -155,6 +155,8 @@ For more advanced information like using SSE transport, Non-destructive mode wit
 
 ## Architecture
 
+See this [DeepWiki link](https://deepwiki.com/Flux159/mcp-server-kubernetes) for a more indepth architecture overview created by Devin.
+
 This section describes the high-level architecture of the MCP Kubernetes server.
 
 ### Request Flow

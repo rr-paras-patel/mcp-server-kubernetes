@@ -13,6 +13,8 @@ For bigger changes please open an issue first to discuss the proposed changes.
 
 ### Project Structure
 
+See this [DeepWiki link](https://deepwiki.com/Flux159/mcp-server-kubernetes) for a more indepth architecture overview created by Devin.
+
 ```
 ├── src/
 │   ├── index.ts              # Main server implementation
