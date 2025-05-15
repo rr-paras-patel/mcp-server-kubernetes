@@ -35,8 +35,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@kubernetes/client-node": "0.20.0",
-    "@modelcontextprotocol/sdk": "1.7.0",
+    "@kubernetes/client-node": "1.2.0",
+    "@modelcontextprotocol/sdk": "1.11.2",
     "express": "4.21.2",
     "js-yaml": "4.1.0",
     "yaml": "2.7.0",
