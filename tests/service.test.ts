@@ -814,40 +814,141 @@ describe("test kubernetes service", () => {
   test("create NodePort service", async () => {
     // Define test data
     const testPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http", nodePort: 30080 }];
+    const nodePortSelector = { app: "nodeport-app", tier: "frontend" };
+    const nodePortServiceName = `${testServiceName}-nodeport`;
     
-    // Create the service
-    const response = await client.request<any>(
-      { 
-        method: "tools/call", 
-        params: { 
-          name: "create_service", 
-          arguments: { 
-            name: `${testServiceName}-nodeport`, 
-            namespace: testNamespace, 
-            type: "NodePort", 
-            ports: testPorts 
-          } 
-        } 
+    // Create service using kubectl_create with manifest
+    const nodePortServiceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: nodePortServiceName,
+        namespace: testNamespace,
+        labels: { "service-type": "nodeport", "test-case": "true" }
+      },
+      spec: {
+        selector: nodePortSelector,
+        type: "NodePort",
+        ports: [
+          {
+            port: testPorts[0].port,
+            targetPort: testPorts[0].targetPort,
+            nodePort: testPorts[0].nodePort,
+            protocol: testPorts[0].protocol,
+            name: testPorts[0].name
+          }
+        ]
+      }
+    };
+    
+    // Create using kubectl_create
+    const createResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_create",
+          arguments: {
+            resourceType: "service",
+            name: nodePortServiceName,
+            namespace: testNamespace,
+            manifest: JSON.stringify(nodePortServiceManifest)
+          }
+        }
       },
       ServiceResponseSchema
     );
+    console.log("NodePort service creation response:", createResponse.content[0].text);
     await sleep(1000);
     
-    // Verify response
-    const parsedResponse = parseServiceResponse(response.content[0].text)!;
-    console.log("NodePort service creation response:", parsedResponse);
+    // List services to verify creation
+    const listResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_list",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Services after NodePort creation:", listResponse.content[0].text);
     
-    // Assert service properties
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.serviceName).toBe(`${testServiceName}-nodeport`);
-    expect(parsedResponse.namespace).toBe(testNamespace);
-    expect(parsedResponse.type).toBe("NodePort");
-    expect(parsedResponse.status).toBe("created");
+    // Get the service details using kubectl_get
+    const getResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: nodePortServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
     
-    // Assert port configuration
-    expect(parsedResponse.ports).toHaveLength(1);
-    expect(parsedResponse.ports[0].port).toBe(80);
-    expect(parsedResponse.ports[0].nodePort).toBe(30080);
+    const serviceJson = JSON.parse(getResponse.content[0].text);
+    console.log("NodePort service details:", serviceJson);
+    
+    // Describe the service using kubectl_describe
+    const describeResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_describe",
+          arguments: {
+            resourceType: "service",
+            name: nodePortServiceName,
+            namespace: testNamespace
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("NodePort service describe (first 150 chars):", describeResponse.content[0].text.substring(0, 150) + "...");
+    
+    // Comprehensive assertions on the service
+    expect(serviceJson.metadata.name).toBe(nodePortServiceName);
+    expect(serviceJson.metadata.namespace).toBe(testNamespace);
+    expect(serviceJson.metadata.labels["service-type"]).toBe("nodeport");
+    expect(serviceJson.spec.type).toBe("NodePort");
+    expect(serviceJson.spec.selector).toEqual(nodePortSelector);
+    
+    // Verify port configuration
+    expect(serviceJson.spec.ports).toHaveLength(1);
+    expect(serviceJson.spec.ports[0].port).toBe(80);
+    expect(serviceJson.spec.ports[0].targetPort).toBe(8080);
+    expect(serviceJson.spec.ports[0].nodePort).toBe(30080);
+    
+    // Get the service in wide format to see exposed ports
+    const getWideResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: nodePortServiceName,
+            namespace: testNamespace,
+            output: "wide"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("NodePort service wide format:", getWideResponse.content[0].text);
+    
+    // Verify the service description contains NodePort information
+    const describeOutput = describeResponse.content[0].text;
+    expect(describeOutput).toContain("NodePort");
+    expect(describeOutput).toContain("30080");
   });
 
   // Test case: Create LoadBalancer service
