@@ -676,21 +676,44 @@ describe("test kubernetes service", () => {
     
     // Create another service to demonstrate delete_service tool
     const secondServiceName = `${testServiceName}-second`;
+    
+    // Use kubectl_create to create the second service
+    const secondServiceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: secondServiceName,
+        namespace: testNamespace,
+        labels: { "test": "true" }
+      },
+      spec: {
+        selector: serviceSelector,
+        ports: testPorts.map(p => ({
+          protocol: p.protocol,
+          port: p.port,
+          targetPort: p.targetPort,
+          name: p.name
+        })),
+        type: "ClusterIP"
+      }
+    };
+    
     const createSecondResponse = await client.request<any>(
-      { 
-        method: "tools/call", 
-        params: { 
-          name: "create_service", 
-          arguments: { 
-            name: secondServiceName, 
-            namespace: testNamespace, 
-            ports: testPorts,
-            selector: serviceSelector
-          } 
-        } 
-      }, 
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_create",
+          arguments: {
+            resourceType: "service",
+            name: secondServiceName,
+            namespace: testNamespace,
+            manifest: JSON.stringify(secondServiceManifest)
+          }
+        }
+      },
       ServiceResponseSchema
     );
+    console.log("Second service creation response:", createSecondResponse.content[0].text);
     await sleep(1000);
     
     // Delete the second service using delete_service tool
