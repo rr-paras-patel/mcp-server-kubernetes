@@ -253,14 +253,16 @@ describe("test kubernetes service", () => {
     );
     await sleep(1000);
     
-    // List the services
+    // List the services using kubectl_list
     const response = await client.request<any>(
       { 
         method: "tools/call", 
         params: { 
-          name: "list_services", 
+          name: "kubectl_list", 
           arguments: { 
-            namespace: testNamespace 
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
           } 
         } 
       }, 
@@ -268,23 +270,21 @@ describe("test kubernetes service", () => {
     );
     
     // Verify response
-    const parsedResponse = parseListServicesResponse(response.content[0].text)!;
-    console.log("Services list response:", parsedResponse);
+    const responseText = response.content[0].text;
+    console.log("Services list response:", responseText);
     
     // Assert service is in the list
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.services).toBeInstanceOf(Array);
-    
-    // Find our service in the list
-    const listedService = parsedResponse.services.find(svc => svc.name === testServiceName);
-    expect(listedService).toBeDefined();
-    expect(listedService?.namespace).toBe(testNamespace);
+    expect(responseText).toContain(testServiceName);
+    expect(responseText).toContain(testNamespace);
+    expect(responseText).toContain("ClusterIP"); // Assuming default type is ClusterIP
+    expect(responseText).toContain("80"); // The port we defined
   });
 
   // Test case: Describe service
   test("describe service", async () => {
     // Define test data
     const testPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
+    const serviceSelector = { app: "test-app", component: "api" };
     
     // First create a service to describe
     const createResponse = await client.request<any>(
@@ -295,7 +295,9 @@ describe("test kubernetes service", () => {
           arguments: { 
             name: testServiceName, 
             namespace: testNamespace, 
-            ports: testPorts
+            ports: testPorts,
+            selector: serviceSelector,
+            type: "ClusterIP"
           } 
         } 
       }, 
@@ -303,13 +305,51 @@ describe("test kubernetes service", () => {
     );
     await sleep(1000);
     
-    // Describe the service
-    const response = await client.request<any>(
+    // List all services in the namespace using kubectl_list
+    const listResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_list",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Services list:", listResponse.content[0].text);
+    
+    // Get the service using kubectl_get
+    const getResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    
+    const getServiceJson = JSON.parse(getResponse.content[0].text);
+    console.log("Service GET response:", getServiceJson);
+    
+    // Describe the service using kubectl_describe
+    const describeResponse = await client.request<any>(
       { 
         method: "tools/call", 
         params: { 
-          name: "describe_service", 
+          name: "kubectl_describe", 
           arguments: { 
+            resourceType: "service",
             name: testServiceName, 
             namespace: testNamespace 
           } 
@@ -318,16 +358,23 @@ describe("test kubernetes service", () => {
       ServiceResponseSchema
     );
     
-    // Verify response
-    const parsedResponse = JSON.parse(response.content[0].text);
-    console.log("Service details response:", parsedResponse);
+    // Log the first part of the describe output
+    console.log("Service describe output (first 150 chars):", describeResponse.content[0].text.substring(0, 150) + "...");
     
-    // Assert service details
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.metadata.name).toBe(testServiceName);
-    expect(parsedResponse.metadata.namespace).toBe(testNamespace);
-    expect(parsedResponse.spec.ports).toHaveLength(1);
-    expect(parsedResponse.spec.ports[0].port).toBe(80);
+    // Verify service details from get response
+    expect(getServiceJson).not.toBeNull();
+    expect(getServiceJson.metadata.name).toBe(testServiceName);
+    expect(getServiceJson.metadata.namespace).toBe(testNamespace);
+    expect(getServiceJson.spec.ports).toHaveLength(1);
+    expect(getServiceJson.spec.ports[0].port).toBe(80);
+    expect(getServiceJson.spec.selector).toEqual(serviceSelector);
+    
+    // Verify the describe output contains key service information
+    const describeOutput = describeResponse.content[0].text;
+    expect(describeOutput).toContain(testServiceName);
+    expect(describeOutput).toContain(testNamespace);
+    expect(describeOutput).toContain("80");
+    expect(describeOutput).toContain("ClusterIP");
   });
 
   // Test case: Update service
@@ -335,6 +382,7 @@ describe("test kubernetes service", () => {
     // Define test data
     const initialPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
     const updatedPorts = [{ port: 90, targetPort: 9090, protocol: "TCP", name: "http-updated" }];
+    const serviceSelector = { app: "test-app", tier: "backend" };
     
     // First create a service to update
     const createResponse = await client.request<any>(
@@ -345,7 +393,8 @@ describe("test kubernetes service", () => {
           arguments: { 
             name: testServiceName, 
             namespace: testNamespace, 
-            ports: initialPorts
+            ports: initialPorts,
+            selector: serviceSelector
           } 
         } 
       }, 
@@ -353,8 +402,43 @@ describe("test kubernetes service", () => {
     );
     await sleep(1000);
     
+    // Get the service using kubectl_get
+    const getResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Service GET response:", JSON.parse(getResponse.content[0].text));
+    
+    // Describe the service using kubectl_describe
+    const describeResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_describe",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Service DESCRIBE output:", describeResponse.content[0].text.substring(0, 150) + "...");
+    
     // Update the service
-    const response = await client.request<any>(
+    const updateResponse = await client.request<any>(
       { 
         method: "tools/call", 
         params: { 
@@ -362,7 +446,9 @@ describe("test kubernetes service", () => {
           arguments: { 
             name: testServiceName, 
             namespace: testNamespace, 
-            ports: updatedPorts
+            ports: updatedPorts,
+            type: "ClusterIP",  // Explicitly set type
+            selector: { ...serviceSelector, updated: "true" }  // Update selector
           } 
         } 
       }, 
@@ -371,7 +457,7 @@ describe("test kubernetes service", () => {
     await sleep(1000);
     
     // Verify response
-    const parsedResponse = parseUpdateServiceResponse(response.content[0].text)!;
+    const parsedResponse = parseUpdateServiceResponse(updateResponse.content[0].text)!;
     console.log("Service update response:", parsedResponse);
     
     // Assert update was successful
@@ -383,6 +469,32 @@ describe("test kubernetes service", () => {
     expect(parsedResponse.service.ports).toHaveLength(1);
     expect(parsedResponse.service.ports[0].port).toBe(90);
     expect(parsedResponse.service.ports[0].targetPort).toBe(9090);
+    
+    // Get the updated service with kubectl_get to verify changes
+    const getUpdatedResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    
+    const getUpdatedParsed = JSON.parse(getUpdatedResponse.content[0].text);
+    console.log("Updated service GET response:", getUpdatedParsed);
+    
+    // Additional verification with kubernetes API results
+    if (getUpdatedParsed.spec) {
+      expect(getUpdatedParsed.spec.ports[0].port).toBe(90);
+      expect(getUpdatedParsed.spec.selector).toHaveProperty('updated');
+    }
   });
 
   // Test case: Delete service
