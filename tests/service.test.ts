@@ -595,6 +595,7 @@ describe("test kubernetes service", () => {
   test("delete service", async () => {
     // Define test data
     const testPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
+    const serviceSelector = { app: "test-app", component: "backend" };
     
     // First create a service to delete
     const createResponse = await client.request<any>(
@@ -605,7 +606,8 @@ describe("test kubernetes service", () => {
           arguments: { 
             name: testServiceName, 
             namespace: testNamespace, 
-            ports: testPorts
+            ports: testPorts,
+            selector: serviceSelector
           } 
         } 
       }, 
@@ -613,14 +615,92 @@ describe("test kubernetes service", () => {
     );
     await sleep(1000);
     
-    // Delete the service
-    const response = await client.request<any>(
+    // List services to verify creation using kubectl_list
+    const listBeforeResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_list",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Services before deletion:", listBeforeResponse.content[0].text);
+    
+    // Get the service details using kubectl_get
+    const getResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    
+    const serviceJson = JSON.parse(getResponse.content[0].text);
+    console.log("Service before deletion:", serviceJson);
+    
+    // Verify service exists before deletion
+    expect(serviceJson.metadata.name).toBe(testServiceName);
+    expect(serviceJson.metadata.namespace).toBe(testNamespace);
+    
+    // Delete the service using kubectl_delete
+    const deleteWithKubectlResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_delete",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Kubectl delete response:", deleteWithKubectlResponse.content[0].text);
+    await sleep(500);
+    
+    // Create another service to demonstrate delete_service tool
+    const secondServiceName = `${testServiceName}-second`;
+    const createSecondResponse = await client.request<any>(
+      { 
+        method: "tools/call", 
+        params: { 
+          name: "create_service", 
+          arguments: { 
+            name: secondServiceName, 
+            namespace: testNamespace, 
+            ports: testPorts,
+            selector: serviceSelector
+          } 
+        } 
+      }, 
+      ServiceResponseSchema
+    );
+    await sleep(1000);
+    
+    // Delete the second service using delete_service tool
+    const deleteResponse = await client.request<any>(
       { 
         method: "tools/call", 
         params: { 
           name: "delete_service", 
           arguments: { 
-            name: testServiceName, 
+            name: secondServiceName, 
             namespace: testNamespace 
           } 
         } 
@@ -629,8 +709,8 @@ describe("test kubernetes service", () => {
     );
     await sleep(1000);
     
-    // Verify response
-    const parsedResponse = parseDeleteServiceResponse(response.content[0].text)!;
+    // Verify delete_service response
+    const parsedResponse = parseDeleteServiceResponse(deleteResponse.content[0].text)!;
     console.log("Service deletion response:", parsedResponse);
     
     // Assert deletion was successful
@@ -638,26 +718,73 @@ describe("test kubernetes service", () => {
     expect(parsedResponse.success).toBe(true);
     expect(parsedResponse.status).toBe("deleted");
     
-    // List services to verify deletion
-    const listResponse = await client.request<any>(
-      { 
-        method: "tools/call", 
-        params: { 
-          name: "list_services", 
-          arguments: { 
-            namespace: testNamespace 
-          } 
-        } 
-      }, 
+    // Try to get the deleted service - should fail or return not found
+    const getAfterDeleteResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Get after delete response:", getAfterDeleteResponse.content[0].text);
+    
+    // List services to verify deletion using kubectl_list
+    const listAfterResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_list",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
+          }
+        }
+      },
       ServiceResponseSchema
     );
     
-    // Verify service is no longer in the list
-    const listResult = parseListServicesResponse(listResponse.content[0].text)!;
-    console.log("Services list after deletion:", listResult);
+    const listAfterText = listAfterResponse.content[0].text;
+    console.log("Services list after deletion:", listAfterText);
     
-    // Assert service is not found
-    expect(listResult.services.find(svc => svc.name === testServiceName)).toBeUndefined();
+    // Verify services are deleted by checking the list output
+    expect(listAfterText).not.toContain(testServiceName);
+    expect(listAfterText).not.toContain(secondServiceName);
+    
+    // Get all services to double check
+    const getAllResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    
+    // Parse the response and verify the service list is empty or doesn't contain our services
+    const getAllJson = JSON.parse(getAllResponse.content[0].text);
+    console.log("All services after deletion:", getAllJson);
+    
+    // Check if the items array is empty or doesn't contain our services
+    if (getAllJson.items && getAllJson.items.length > 0) {
+      const serviceNames = getAllJson.items.map((item: any) => item.metadata.name);
+      expect(serviceNames).not.toContain(testServiceName);
+      expect(serviceNames).not.toContain(secondServiceName);
+    }
   });
 
   // Test case: Create NodePort service
