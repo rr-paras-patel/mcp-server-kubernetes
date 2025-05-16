@@ -383,6 +383,7 @@ describe("test kubernetes service", () => {
     const initialPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
     const updatedPorts = [{ port: 90, targetPort: 9090, protocol: "TCP", name: "http-updated" }];
     const serviceSelector = { app: "test-app", tier: "backend" };
+    const testLabels = { environment: "test", managed: "mcp" };
     
     // First create a service to update
     const createResponse = await client.request<any>(
@@ -402,6 +403,23 @@ describe("test kubernetes service", () => {
     );
     await sleep(1000);
     
+    // List all services in the namespace using kubectl_list
+    const listBeforeResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_list",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Services before update:", listBeforeResponse.content[0].text);
+    
     // Get the service using kubectl_get
     const getResponse = await client.request<any>(
       {
@@ -418,7 +436,13 @@ describe("test kubernetes service", () => {
       },
       ServiceResponseSchema
     );
-    console.log("Service GET response:", JSON.parse(getResponse.content[0].text));
+    
+    const initialService = JSON.parse(getResponse.content[0].text);
+    console.log("Initial service GET response:", initialService);
+    
+    // Verify initial service properties
+    expect(initialService.spec.ports[0].port).toBe(80);
+    expect(initialService.spec.ports[0].targetPort).toBe(8080);
     
     // Describe the service using kubectl_describe
     const describeResponse = await client.request<any>(
@@ -437,7 +461,41 @@ describe("test kubernetes service", () => {
     );
     console.log("Service DESCRIBE output:", describeResponse.content[0].text.substring(0, 150) + "...");
     
-    // Update the service
+    // Use kubectl apply to modify the service with yaml
+    const currentSpec = initialService.spec;
+    const modifiedService = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: testServiceName,
+        namespace: testNamespace,
+        labels: testLabels
+      },
+      spec: {
+        ...currentSpec,
+        ports: updatedPorts,
+        selector: { ...serviceSelector, updated: "true" }
+      }
+    };
+    
+    // Apply the modified service using kubectl_apply
+    const applyResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_apply",
+          arguments: {
+            manifest: JSON.stringify(modifiedService),
+            namespace: testNamespace
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Apply response:", applyResponse.content[0].text);
+    await sleep(1000);
+    
+    // Update the service using update_service
     const updateResponse = await client.request<any>(
       { 
         method: "tools/call", 
@@ -447,8 +505,8 @@ describe("test kubernetes service", () => {
             name: testServiceName, 
             namespace: testNamespace, 
             ports: updatedPorts,
-            type: "ClusterIP",  // Explicitly set type
-            selector: { ...serviceSelector, updated: "true" }  // Update selector
+            type: "ClusterIP",
+            selector: { ...serviceSelector, updated: "true" }
           } 
         } 
       }, 
@@ -470,6 +528,23 @@ describe("test kubernetes service", () => {
     expect(parsedResponse.service.ports[0].port).toBe(90);
     expect(parsedResponse.service.ports[0].targetPort).toBe(9090);
     
+    // List all services after update to verify changes
+    const listAfterResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_list",
+          arguments: {
+            resourceType: "services",
+            namespace: testNamespace,
+            output: "formatted"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Services after update:", listAfterResponse.content[0].text);
+    
     // Get the updated service with kubectl_get to verify changes
     const getUpdatedResponse = await client.request<any>(
       {
@@ -487,14 +562,33 @@ describe("test kubernetes service", () => {
       ServiceResponseSchema
     );
     
-    const getUpdatedParsed = JSON.parse(getUpdatedResponse.content[0].text);
-    console.log("Updated service GET response:", getUpdatedParsed);
+    const updatedService = JSON.parse(getUpdatedResponse.content[0].text);
+    console.log("Updated service GET response:", updatedService);
     
-    // Additional verification with kubernetes API results
-    if (getUpdatedParsed.spec) {
-      expect(getUpdatedParsed.spec.ports[0].port).toBe(90);
-      expect(getUpdatedParsed.spec.selector).toHaveProperty('updated');
-    }
+    // Comprehensive verification of the updated service
+    expect(updatedService.spec.ports[0].port).toBe(90);
+    expect(updatedService.spec.ports[0].targetPort).toBe(9090);
+    expect(updatedService.spec.ports[0].name).toBe("http-updated");
+    expect(updatedService.spec.selector.updated).toBe("true");
+    expect(updatedService.spec.type).toBe("ClusterIP");
+    
+    // Use kubectl_get with wide output format
+    const getWideResponse = await client.request<any>(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "wide"
+          }
+        }
+      },
+      ServiceResponseSchema
+    );
+    console.log("Service GET wide format:", getWideResponse.content[0].text);
   });
 
   // Test case: Delete service
