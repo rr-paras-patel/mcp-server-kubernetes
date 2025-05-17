@@ -230,9 +230,11 @@ describe("kubernetes server operations", () => {
         {
           method: "tools/call",
           params: {
-            name: "list_pods",
+            name: "kubectl_list",
             arguments: {
+              resourceType: "pods",
               namespace: "default",
+              output: "json"
             },
           },
         },
@@ -251,11 +253,12 @@ describe("kubernetes server operations", () => {
           {
             method: "tools/call",
             params: {
-              name: "delete_pod",
+              name: "kubectl_delete",
               arguments: {
+                resourceType: "pod",
                 name: pod.metadata.name,
                 namespace: "default",
-                ignoreNotFound: true,
+                force: true
               },
             },
           },
@@ -272,10 +275,12 @@ describe("kubernetes server operations", () => {
               {
                 method: "tools/call",
                 params: {
-                  name: "describe_pod",
+                  name: "kubectl_get",
                   arguments: {
+                    resourceType: "pod",
                     name: pod.metadata.name,
                     namespace: "default",
+                    output: "json"
                   },
                 },
               },
@@ -289,21 +294,44 @@ describe("kubernetes server operations", () => {
         }
       }
 
-      // Create new pod with random SHA name
+      // Create new pod with random SHA name using kubectl_create
+      const podManifest = {
+        apiVersion: "v1",
+        kind: "Pod",
+        metadata: {
+          name: podName,
+          namespace: "default",
+          labels: {
+            app: "unit-test",
+            testcase: "pod-lifecycle"
+          }
+        },
+        spec: {
+          containers: [
+            {
+              name: "busybox",
+              image: "busybox",
+              command: [
+                "/bin/sh",
+                "-c",
+                "echo Pod is running && sleep infinity"
+              ]
+            }
+          ],
+          restartPolicy: "Never"
+        }
+      };
+
       const createPodResult = await client.request(
         {
           method: "tools/call",
           params: {
-            name: "create_pod",
+            name: "kubectl_create",
             arguments: {
+              resourceType: "pod",
               name: podName,
               namespace: "default",
-              template: "busybox",
-              command: [
-                "/bin/sh",
-                "-c",
-                "echo Pod is running && sleep infinity",
-              ],
+              manifest: JSON.stringify(podManifest)
             },
           },
         },
@@ -311,9 +339,8 @@ describe("kubernetes server operations", () => {
       );
 
       expect(createPodResult.content[0].type).toBe("text");
-      const podResult = JSON.parse(createPodResult.content[0].text);
-      expect(podResult.podName).toBe(podName);
-
+      // Instead of parsing podName from create_pod response, we verify the pod exists
+      
       // Step 2: Wait for Running state (up to 60 seconds)
       let podRunning = false;
       const startTime = Date.now();
@@ -323,10 +350,12 @@ describe("kubernetes server operations", () => {
           {
             method: "tools/call",
             params: {
-              name: "describe_pod",
+              name: "kubectl_get",
               arguments: {
+                resourceType: "pod",
                 name: podName,
                 namespace: "default",
+                output: "json"
               },
             },
           },
@@ -338,7 +367,7 @@ describe("kubernetes server operations", () => {
           podRunning = true;
           console.log(`Pod ${podName} is running. Checking logs...`);
 
-          // Check pod logs once running
+          // Check pod logs once running using kubectl_get with logs
           const logsResult = await client.request(
             {
               method: "tools/call",
@@ -347,7 +376,7 @@ describe("kubernetes server operations", () => {
                 arguments: {
                   resourceType: "pod",
                   name: podName,
-                  namespace: "default",
+                  namespace: "default"
                 },
               },
             },
@@ -355,8 +384,7 @@ describe("kubernetes server operations", () => {
           );
 
           expect(logsResult.content[0].type).toBe("text");
-          const logs = JSON.parse(logsResult.content[0].text);
-          expect(logs.logs[podName]).toContain("Pod is running");
+          expect(logsResult.content[0].text).toContain("Pod is running");
           break;
         }
         await sleep(1000);
@@ -369,10 +397,12 @@ describe("kubernetes server operations", () => {
         {
           method: "tools/call",
           params: {
-            name: "delete_pod",
+            name: "kubectl_delete",
             arguments: {
+              resourceType: "pod",
               name: podName,
               namespace: "default",
+              force: true
             },
           },
         },
@@ -380,8 +410,7 @@ describe("kubernetes server operations", () => {
       );
 
       expect(deletePodResult.content[0].type).toBe("text");
-      const deleteResult = JSON.parse(deletePodResult.content[0].text);
-      expect(deleteResult.status).toBe("deleted");
+      expect(deletePodResult.content[0].text).toContain(`pod "${podName}" force deleted`);
 
       // Try to verify pod termination, but don't fail the test if we can't confirm it
       try {
@@ -394,10 +423,12 @@ describe("kubernetes server operations", () => {
               {
                 method: "tools/call",
                 params: {
-                  name: "describe_pod",
+                  name: "kubectl_get",
                   arguments: {
+                    resourceType: "pod",
                     name: podName,
                     namespace: "default",
+                    output: "json"
                   },
                 },
               },
@@ -406,7 +437,7 @@ describe("kubernetes server operations", () => {
 
             // Pod still exists, check if it's in Terminating state
             const status = JSON.parse(podStatus.content[0].text);
-            if (status.status?.phase === "Terminating") {
+            if (status.status?.phase === "Terminating" || status.metadata?.deletionTimestamp) {
               podTerminated = true;
               break;
             }
