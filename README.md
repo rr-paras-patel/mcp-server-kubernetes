@@ -66,25 +66,23 @@ npx mcp-chat --config "%APPDATA%\Claude\claude_desktop_config.json"
 ## Features
 
 - [x] Connect to a Kubernetes cluster
-- [x] List all pods, services, deployments
-- [x] List, Describe nodes
-- [x] Create, describe, delete a pod
-- [x] List all namespaces, create a namespace
-- [x] Create custom pod & deployment configs, update deployment replicas
-- [x] Create, describe, delete, update a service
-- [x] Create, get, update, delete a ConfigMap
-- [x] Get logs from a pod for debugging (supports pods, deployments, jobs, and label selectors)
-- [x] Support Helm v3 for installing charts
-  - Install charts with custom values
-  - Uninstall releases
-  - Upgrade existing releases
-  - Support for namespaces
-  - Support for version specification
-  - Support for custom repositories
-- [x] kubectl explain and kubectl api-resources support
-- [x] Get Kubernetes events from the cluster
-- [x] Port forward to a pod or service
-- [x] Create, list, and decribe cronjobs
+- [x] Unified kubectl API for managing resources
+  - Get or list resources with `kubectl_get`
+  - Describe resources with `kubectl_describe`
+  - List resources with `kubectl_list`
+  - Create resources with `kubectl_create`
+  - Apply YAML manifests with `kubectl_apply`
+  - Delete resources with `kubectl_delete`
+  - Get logs with `kubectl_logs`
+  - Manage kubectl contexts with `kubectl_context`
+  - Explain Kubernetes resources with `explain_resource`
+  - List API resources with `list_api_resources`
+- [x] Advanced operations
+  - Scale deployments with `scale_deployment`
+  - Port forward to pods and services with `port_forward`
+  - Run Helm operations
+    - Install, upgrade, and uninstall charts
+    - Support for custom values, repositories, and versions
 - [x] Non-destructive mode for read and create/update-only access to clusters
 
 ## Local Development
@@ -149,9 +147,31 @@ See the [CONTRIBUTING.md](CONTRIBUTING.md) file for details.
 
 ## Advanced
 
-### Additional Advanced Features
+### Non-Destructive Mode
 
-For more advanced information like using SSE transport, Non-destructive mode with `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS`, see the [ADVANCED_README.md](ADVANCED_README.md).
+You can run the server in a non-destructive mode that disables all destructive operations (delete pods, delete deployments, delete namespaces, etc.):
+
+```shell
+ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS=true npx mcp-server-kubernetes
+```
+
+For Claude Desktop configuration with non-destructive mode:
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-readonly": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS": "true"
+      }
+    }
+  }
+}
+```
+
+For additional advanced features, see the [ADVANCED_README.md](ADVANCED_README.md).
 
 ## Architecture
 
@@ -177,7 +197,7 @@ sequenceDiagram
 
     alt Tools Request
         Server->>Handler: Route to tools handler
-        Handler->>K8sManager: Execute tool operation
+        Handler->>K8sManager: Execute kubectl operation
         K8sManager->>K8s: Make API call
         K8s-->>K8sManager: Return result
         K8sManager-->>Handler: Process response
