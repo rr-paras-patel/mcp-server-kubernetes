@@ -28,7 +28,7 @@ import {
 import * as k8s from "@kubernetes/client-node";
 import { KubernetesManager } from "./types.js";
 import { serverConfig } from "./config/server-config.js";
-import { createDeploymentSchema } from "./config/deployment-config.js";
+// Removed createDeploymentSchema import - using kubectl_create instead
 import { listNamespacesSchema } from "./config/namespace-config.js";
 import { cleanupSchema } from "./config/cleanup-config.js";
 import { startSSEServer } from "./utils/sse.js";
@@ -75,9 +75,6 @@ const allTools = [
   kubectlDeleteSchema,
   kubectlCreateSchema,
   kubectlLogsSchema,
-  
-  // Creation tools
-  createDeploymentSchema,
   
   // Special operations
   scaleDeploymentSchema,
