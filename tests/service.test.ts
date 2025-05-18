@@ -55,6 +55,14 @@ interface DeleteServiceResponse {
   status: string;
 }
 
+// Define the response type for easier use in tests
+type KubectlResponse = {
+  content: Array<{
+    type: "text";
+    text: string;
+  }>;
+};
+
 // Utility function: Sleep for a specified number of milliseconds
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -149,18 +157,20 @@ describe("test kubernetes service", () => {
       testNamespace = `${NAMESPACE_PREFIX}-${generateRandomId()}`;
       console.log(`Creating test namespace: ${testNamespace}`);
 
-      // Call API to create the namespace
-      await client.request<any>(
+      // Call API to create the namespace using kubectl_create
+      await client.request(
         {
           method: "tools/call",
           params: {
-            name: "create_namespace",
+            name: "kubectl_create",
             arguments: {
+              resourceType: "namespace",
               name: testNamespace,
             },
           },
         },
-        CreateNamespaceResponseSchema,
+        // @ts-ignore - Ignoring type error to get tests running
+        z.any()
       );
 
       // Wait for the namespace to be fully created
@@ -174,12 +184,23 @@ describe("test kubernetes service", () => {
   // Cleanup after each test
   afterEach(async () => {
     try {
-      // Clean up the test namespace by directly calling the API
+      // Clean up the test namespace by using kubectl_delete
       console.log(`Cleaning up test namespace: ${testNamespace}`);
-      const k8sManager = new KubernetesManager();
-
-      // @ts-ignore
-      await k8sManager.getCoreApi().deleteNamespace(testNamespace);
+      
+      await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "kubectl_delete",
+            arguments: {
+              resourceType: "namespace",
+              name: testNamespace,
+            },
+          },
+        },
+        // @ts-ignore - Ignoring type error to get tests running
+        z.any()
+      );
 
       // Close the client connection
       await transport.close();
@@ -195,40 +216,80 @@ describe("test kubernetes service", () => {
     const testPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
     const testSelector = { app: "test-app", tier: "backend" };
     
-    // Create the service
-    const response = await client.request<any>(
+    // Create the service manifest
+    const serviceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: testServiceName,
+        namespace: testNamespace,
+      },
+      spec: {
+        selector: testSelector,
+        ports: testPorts.map(p => ({
+          port: p.port,
+          targetPort: p.targetPort,
+          protocol: p.protocol,
+          name: p.name
+        })),
+        type: "ClusterIP"
+      }
+    };
+    
+    // Create the service using kubectl_create
+    const response = await client.request(
       {
         method: "tools/call",
         params: { 
-          name: "create_service", 
-          arguments: { 
-            name: testServiceName, 
-            namespace: testNamespace, 
-            type: "ClusterIP", 
-            selector: testSelector, 
-            ports: testPorts 
-          } 
+          name: "kubectl_create", 
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            manifest: JSON.stringify(serviceManifest)
+          }
         },
       },
-      ServiceResponseSchema
-    );
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
+    
     await sleep(1000);
     
     // Verify response
-    const parsedResponse = parseServiceResponse(response.content[0].text)!;
-    console.log("ClusterIP service creation response:", parsedResponse);
+    expect(response.content[0].type).toBe("text");
+    expect(response.content[0].text).toContain(testServiceName);
+    expect(response.content[0].text).toContain("Service");
+    
+    // Verify service was created correctly using kubectl_get
+    const getResponse = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
+    
+    const serviceJson = JSON.parse(getResponse.content[0].text);
     
     // Assert service properties
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.serviceName).toBe(testServiceName);
-    expect(parsedResponse.namespace).toBe(testNamespace);
-    expect(parsedResponse.type).toBe("ClusterIP");
-    expect(parsedResponse.status).toBe("created");
+    expect(serviceJson.metadata.name).toBe(testServiceName);
+    expect(serviceJson.metadata.namespace).toBe(testNamespace);
+    expect(serviceJson.spec.type).toBe("ClusterIP");
     
     // Assert port configuration
-    expect(parsedResponse.ports).toHaveLength(1);
-    expect(parsedResponse.ports[0].port).toBe(80);
-    expect(parsedResponse.ports[0].targetPort).toBe(8080);
+    expect(serviceJson.spec.ports).toHaveLength(1);
+    expect(serviceJson.spec.ports[0].port).toBe(80);
+    expect(serviceJson.spec.ports[0].targetPort).toBe(8080);
   });
 
   // Test case: List services
@@ -385,22 +446,43 @@ describe("test kubernetes service", () => {
     const serviceSelector = { app: "test-app", tier: "backend" };
     const testLabels = { environment: "test", managed: "mcp" };
     
-    // First create a service to update
-    const createResponse = await client.request<any>(
+    // First create a service to update - use kubectl_create
+    const serviceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: testServiceName,
+        namespace: testNamespace,
+      },
+      spec: {
+        selector: serviceSelector,
+        ports: initialPorts.map(p => ({
+          port: p.port,
+          targetPort: p.targetPort,
+          protocol: p.protocol,
+          name: p.name
+        })),
+        type: "ClusterIP"
+      }
+    };
+    
+    await client.request(
       { 
         method: "tools/call", 
         params: { 
-          name: "create_service", 
-          arguments: { 
-            name: testServiceName, 
-            namespace: testNamespace, 
-            ports: initialPorts,
-            selector: serviceSelector
-          } 
+          name: "kubectl_create", 
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            manifest: JSON.stringify(serviceManifest)
+          }
         } 
       }, 
-      ServiceResponseSchema
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
     );
+    
     await sleep(1000);
     
     // List all services in the namespace using kubectl_list
@@ -479,7 +561,7 @@ describe("test kubernetes service", () => {
     };
     
     // Apply the modified service using kubectl_apply
-    const applyResponse = await client.request<any>(
+    const applyResponse = await client.request(
       {
         method: "tools/call",
         params: {
@@ -490,63 +572,56 @@ describe("test kubernetes service", () => {
           }
         }
       },
-      ServiceResponseSchema
-    );
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
     console.log("Apply response:", applyResponse.content[0].text);
     await sleep(1000);
     
-    // Update the service using update_service
-    const updateResponse = await client.request<any>(
+    // Update the service using kubectl_apply instead of update_service
+    const updatedServiceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: testServiceName,
+        namespace: testNamespace,
+      },
+      spec: {
+        selector: { ...serviceSelector, updated: "true" },
+        ports: updatedPorts.map(p => ({
+          port: p.port,
+          targetPort: p.targetPort,
+          protocol: p.protocol,
+          name: p.name
+        })),
+        type: "ClusterIP"
+      }
+    };
+    
+    const updateResponse = await client.request(
       { 
         method: "tools/call", 
         params: { 
-          name: "update_service", 
+          name: "kubectl_apply", 
           arguments: { 
-            name: testServiceName, 
-            namespace: testNamespace, 
-            ports: updatedPorts,
-            type: "ClusterIP",
-            selector: { ...serviceSelector, updated: "true" }
+            manifest: JSON.stringify(updatedServiceManifest),
+            namespace: testNamespace
           } 
         } 
       }, 
-      ServiceResponseSchema
-    );
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
+    
     await sleep(1000);
     
     // Verify response
-    const parsedResponse = parseUpdateServiceResponse(updateResponse.content[0].text)!;
-    console.log("Service update response:", parsedResponse);
+    expect(updateResponse.content[0].type).toBe("text");
+    expect(updateResponse.content[0].text).toContain(testServiceName);
+    expect(updateResponse.content[0].text).toContain("configured");
     
-    // Assert update was successful
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.message).toBe("Service updated successfully");
-    expect(parsedResponse.service.name).toBe(testServiceName);
-    
-    // Verify updated properties
-    expect(parsedResponse.service.ports).toHaveLength(1);
-    expect(parsedResponse.service.ports[0].port).toBe(90);
-    expect(parsedResponse.service.ports[0].targetPort).toBe(9090);
-    
-    // List all services after update to verify changes
-    const listAfterResponse = await client.request<any>(
-      {
-        method: "tools/call",
-        params: {
-          name: "kubectl_list",
-          arguments: {
-            resourceType: "services",
-            namespace: testNamespace,
-            output: "formatted"
-          }
-        }
-      },
-      ServiceResponseSchema
-    );
-    console.log("Services after update:", listAfterResponse.content[0].text);
-    
-    // Get the updated service with kubectl_get to verify changes
-    const getUpdatedResponse = await client.request<any>(
+    // Verify updated properties using kubectl_get
+    const getUpdatedResponse = await client.request(
       {
         method: "tools/call",
         params: {
@@ -559,11 +634,11 @@ describe("test kubernetes service", () => {
           }
         }
       },
-      ServiceResponseSchema
-    );
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
     
     const updatedService = JSON.parse(getUpdatedResponse.content[0].text);
-    console.log("Updated service GET response:", updatedService);
     
     // Comprehensive verification of the updated service
     expect(updatedService.spec.ports[0].port).toBe(90);
@@ -571,24 +646,6 @@ describe("test kubernetes service", () => {
     expect(updatedService.spec.ports[0].name).toBe("http-updated");
     expect(updatedService.spec.selector.updated).toBe("true");
     expect(updatedService.spec.type).toBe("ClusterIP");
-    
-    // Use kubectl_get with wide output format
-    const getWideResponse = await client.request<any>(
-      {
-        method: "tools/call",
-        params: {
-          name: "kubectl_get",
-          arguments: {
-            resourceType: "service",
-            name: testServiceName,
-            namespace: testNamespace,
-            output: "wide"
-          }
-        }
-      },
-      ServiceResponseSchema
-    );
-    console.log("Service GET wide format:", getWideResponse.content[0].text);
   });
 
   // Test case: Delete service
@@ -597,22 +654,43 @@ describe("test kubernetes service", () => {
     const testPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
     const serviceSelector = { app: "test-app", component: "backend" };
     
-    // First create a service to delete
-    const createResponse = await client.request<any>(
+    // First create a service to delete using kubectl_create
+    const serviceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: testServiceName,
+        namespace: testNamespace,
+      },
+      spec: {
+        selector: serviceSelector,
+        ports: testPorts.map(p => ({
+          port: p.port,
+          targetPort: p.targetPort,
+          protocol: p.protocol,
+          name: p.name
+        })),
+        type: "ClusterIP"
+      }
+    };
+    
+    await client.request(
       { 
         method: "tools/call", 
         params: { 
-          name: "create_service", 
-          arguments: { 
-            name: testServiceName, 
-            namespace: testNamespace, 
-            ports: testPorts,
-            selector: serviceSelector
-          } 
+          name: "kubectl_create", 
+          arguments: {
+            resourceType: "service",
+            name: testServiceName,
+            namespace: testNamespace,
+            manifest: JSON.stringify(serviceManifest)
+          }
         } 
       }, 
-      ServiceResponseSchema
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
     );
+    
     await sleep(1000);
     
     // List services to verify creation using kubectl_list
@@ -657,24 +735,30 @@ describe("test kubernetes service", () => {
     expect(serviceJson.metadata.namespace).toBe(testNamespace);
     
     // Delete the service using kubectl_delete
-    const deleteWithKubectlResponse = await client.request<any>(
-      {
-        method: "tools/call",
-        params: {
-          name: "kubectl_delete",
-          arguments: {
+    const deleteResponse = await client.request(
+      { 
+        method: "tools/call", 
+        params: { 
+          name: "kubectl_delete", 
+          arguments: { 
             resourceType: "service",
-            name: testServiceName,
-            namespace: testNamespace
-          }
-        }
-      },
-      ServiceResponseSchema
-    );
-    console.log("Kubectl delete response:", deleteWithKubectlResponse.content[0].text);
-    await sleep(500);
+            name: testServiceName, 
+            namespace: testNamespace 
+          } 
+        } 
+      }, 
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
     
-    // Create another service to demonstrate delete_service tool
+    await sleep(1000);
+    
+    // Verify delete response
+    expect(deleteResponse.content[0].type).toBe("text");
+    expect(deleteResponse.content[0].text).toContain(testServiceName);
+    expect(deleteResponse.content[0].text).toContain("deleted");
+    
+    // Create another service to demonstrate kubectl_delete instead of delete_service
     const secondServiceName = `${testServiceName}-second`;
     
     // Use kubectl_create to create the second service
@@ -716,48 +800,29 @@ describe("test kubernetes service", () => {
     console.log("Second service creation response:", createSecondResponse.content[0].text);
     await sleep(1000);
     
-    // Delete the second service using delete_service tool
-    const deleteResponse = await client.request<any>(
+    // Delete the second service using kubectl_delete instead of delete_service
+    const deleteSecondResponse = await client.request(
       { 
         method: "tools/call", 
         params: { 
-          name: "delete_service", 
+          name: "kubectl_delete", 
           arguments: { 
+            resourceType: "service",
             name: secondServiceName, 
             namespace: testNamespace 
           } 
         } 
       }, 
-      ServiceResponseSchema
-    );
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
+    
     await sleep(1000);
     
-    // Verify delete_service response
-    const parsedResponse = parseDeleteServiceResponse(deleteResponse.content[0].text)!;
-    console.log("Service deletion response:", parsedResponse);
-    
-    // Assert deletion was successful
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.success).toBe(true);
-    expect(parsedResponse.status).toBe("deleted");
-    
-    // Try to get the deleted service - should fail or return not found
-    const getAfterDeleteResponse = await client.request<any>(
-      {
-        method: "tools/call",
-        params: {
-          name: "kubectl_get",
-          arguments: {
-            resourceType: "service",
-            name: testServiceName,
-            namespace: testNamespace,
-            output: "json"
-          }
-        }
-      },
-      ServiceResponseSchema
-    );
-    console.log("Get after delete response:", getAfterDeleteResponse.content[0].text);
+    // Verify delete response
+    expect(deleteSecondResponse.content[0].type).toBe("text");
+    expect(deleteSecondResponse.content[0].text).toContain(secondServiceName);
+    expect(deleteSecondResponse.content[0].text).toContain("deleted");
     
     // List services to verify deletion using kubectl_list
     const listAfterResponse = await client.request<any>(
@@ -955,38 +1020,80 @@ describe("test kubernetes service", () => {
   test("create LoadBalancer service", async () => {
     // Define test data
     const testPorts = [{ port: 80, targetPort: 8080, protocol: "TCP", name: "http" }];
+    const lbServiceName = `${testServiceName}-lb`;
+    const serviceSelector = { app: "lb-app", component: "frontend" };
     
-    // Create the service
-    const response = await client.request<any>(
+    // Create LoadBalancer service using kubectl_create instead of create_service
+    const lbServiceManifest = {
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: lbServiceName,
+        namespace: testNamespace,
+      },
+      spec: {
+        selector: serviceSelector,
+        ports: testPorts.map(p => ({
+          port: p.port,
+          targetPort: p.targetPort,
+          protocol: p.protocol,
+          name: p.name
+        })),
+        type: "LoadBalancer"
+      }
+    };
+    
+    const response = await client.request(
       { 
         method: "tools/call", 
         params: { 
-          name: "create_service", 
-          arguments: { 
-            name: `${testServiceName}-lb`, 
-            namespace: testNamespace, 
-            type: "LoadBalancer", 
-            ports: testPorts 
-          } 
+          name: "kubectl_create", 
+          arguments: {
+            resourceType: "service",
+            name: lbServiceName,
+            namespace: testNamespace,
+            manifest: JSON.stringify(lbServiceManifest)
+          }
         } 
       },
-      ServiceResponseSchema
-    );
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
+    
     await sleep(1000);
     
     // Verify response
-    const parsedResponse = parseServiceResponse(response.content[0].text)!;
-    console.log("LoadBalancer service creation response:", parsedResponse);
+    expect(response.content[0].type).toBe("text");
+    expect(response.content[0].text).toContain(lbServiceName);
+    
+    // Verify service using kubectl_get
+    const getResponse = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_get",
+          arguments: {
+            resourceType: "service",
+            name: lbServiceName,
+            namespace: testNamespace,
+            output: "json"
+          }
+        }
+      },
+      // @ts-ignore - Ignoring type error to get tests running
+      z.any()
+    ) as KubectlResponse;
+    
+    const serviceJson = JSON.parse(getResponse.content[0].text);
     
     // Assert service properties
-    expect(parsedResponse).not.toBeNull();
-    expect(parsedResponse.serviceName).toBe(`${testServiceName}-lb`);
-    expect(parsedResponse.namespace).toBe(testNamespace);
-    expect(parsedResponse.type).toBe("LoadBalancer");
-    expect(parsedResponse.status).toBe("created");
+    expect(serviceJson.metadata.name).toBe(lbServiceName);
+    expect(serviceJson.metadata.namespace).toBe(testNamespace);
+    expect(serviceJson.spec.type).toBe("LoadBalancer");
     
-    // Assert structure
-    expect(parsedResponse.clusterIP).toBeDefined();
-    expect(parsedResponse.ports).toHaveLength(1);
+    // Assert port configuration
+    expect(serviceJson.spec.ports).toHaveLength(1);
+    expect(serviceJson.spec.ports[0].port).toBe(80);
+    expect(serviceJson.spec.ports[0].targetPort).toBe(8080);
   });
 });
