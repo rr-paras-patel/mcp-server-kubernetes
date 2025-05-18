@@ -1,15 +1,7 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-// Import only the function implementations we need for the switch statement
-import { listNodes } from "./tools/list_nodes.js";
-import { listServices } from "./tools/list_services.js";
-import { listDeployments } from "./tools/list_deployments.js";
-import { listCronJobs } from "./tools/list_cronjobs.js";
-import { describeCronJob } from "./tools/describe_cronjob.js";
-import { listJobs, listJobsSchema } from "./tools/list_jobs.js";
 import { getJobLogs, getJobLogsSchema } from "./tools/get_job_logs.js";
-import { describeNode } from "./tools/describe_node.js";
 import {
   installHelmChart,
   installHelmChartSchema,
@@ -24,8 +16,6 @@ import {
   listApiResources,
   listApiResourcesSchema,
 } from "./tools/kubectl-operations.js";
-import { createCronJob, createCronJobSchema } from "./tools/create_cronjob.js";
-import { DeleteCronJob, DeleteCronJobSchema } from "./tools/delete_cronjob.js";
 import { getLogs, getLogsSchema } from "./tools/get_logs.js";
 import { getEvents, getEventsSchema } from "./tools/get_events.js";
 import { execInPod, execInPodSchema } from "./tools/exec_in_pod.js";
@@ -52,26 +42,9 @@ import {
   StopPortForwardSchema,
 } from "./tools/port_forward.js";
 import {
-  deleteDeployment,
-  deleteDeploymentSchema,
-} from "./tools/delete_deployment.js";
-import { createDeployment } from "./tools/create_deployment.js";
-import {
   scaleDeployment,
   scaleDeploymentSchema,
 } from "./tools/scale_deployment.js";
-import { describeDeployment } from "./tools/describe_deployment.js";
-import {
-  updateDeployment,
-  updateDeploymentSchema,
-} from "./tools/update_deployment.js";
-import {
-  createConfigMap,
-  CreateConfigMapSchema,
-} from "./tools/create_configmap.js";
-import { getConfigMap } from "./tools/get_configmap.js";
-import { updateConfigMap, UpdateConfigMapSchema } from "./tools/update_configmap.js";
-import { deleteConfigMap, DeleteConfigMapSchema } from "./tools/delete_configmap.js";
 import { listContexts, listContextsSchema } from "./tools/list_contexts.js";
 import {
   getCurrentContext,
@@ -96,7 +69,6 @@ const nonDestructiveTools =
 const destructiveTools = [
   kubectlDeleteSchema, // This replaces all individual delete operations 
   uninstallHelmChartSchema,
-  DeleteCronJobSchema,
   cleanupSchema, // Cleanup is also destructive as it deletes resources
 ];
 
@@ -115,17 +87,6 @@ const allTools = [
   
   // Creation tools
   createDeploymentSchema,
-  createCronJobSchema,
-  CreateConfigMapSchema,
-  
-  // Deletion tools
-  deleteDeploymentSchema,
-  DeleteCronJobSchema,
-  DeleteConfigMapSchema,
-  
-  // Update tools
-  updateDeploymentSchema,
-  UpdateConfigMapSchema,
   
   // Special operations
   scaleDeploymentSchema,
@@ -425,27 +386,64 @@ server.setRequestHandler(
         }
 
         case "create_cronjob": {
-          return await createCronJob(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              schedule: string;
-              image: string;
-              command?: string[];
-              suspend?: boolean;
+          // Use kubectl_create instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            schedule: string;
+            image: string;
+            command?: string[];
+            suspend?: boolean;
+          };
+          
+          // Create CronJob manifest
+          const cronJobManifest = {
+            apiVersion: "batch/v1",
+            kind: "CronJob",
+            metadata: {
+              name: typedInput.name,
+              namespace: typedInput.namespace
+            },
+            spec: {
+              schedule: typedInput.schedule,
+              suspend: typedInput.suspend || false,
+              jobTemplate: {
+                spec: {
+                  template: {
+                    spec: {
+                      containers: [{
+                        name: typedInput.name,
+                        image: typedInput.image,
+                        command: typedInput.command
+                      }],
+                      restartPolicy: "OnFailure"
+                    }
+                  }
+                }
+              }
             }
-          );
+          };
+          
+          return await kubectlCreate(k8sManager, {
+            resourceType: "cronjob",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            manifest: JSON.stringify(cronJobManifest)
+          });
         }
 
         case "delete_cronjob": {
-          return await DeleteCronJob(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-            }
-          );
+          // Use kubectl_delete instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+          };
+          
+          return await kubectlDelete(k8sManager, {
+            resourceType: "cronjob",
+            name: typedInput.name,
+            namespace: typedInput.namespace
+          });
         }
 
         case "delete_pod": {
@@ -624,42 +622,123 @@ server.setRequestHandler(
         }
 
         case "delete_deployment": {
-          return await deleteDeployment(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              ignoreNotFound?: boolean;
-            }
-          );
+          // Use kubectl_delete instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            ignoreNotFound?: boolean;
+          };
+          
+          return await kubectlDelete(k8sManager, {
+            resourceType: "deployment",
+            name: typedInput.name,
+            namespace: typedInput.namespace
+          });
         }
 
         case "create_deployment": {
-          return await createDeployment(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              template: string;
-              replicas?: number;
-              ports?: number[];
-              customConfig?: any;
+          // Use kubectl_create instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            template: string;
+            replicas?: number;
+            ports?: number[];
+            customConfig?: any;
+          };
+          
+          // Create deployment manifest
+          const deploymentManifest = {
+            apiVersion: "apps/v1",
+            kind: "Deployment",
+            metadata: {
+              name: typedInput.name,
+              namespace: typedInput.namespace
+            },
+            spec: {
+              replicas: typedInput.replicas || 1,
+              selector: {
+                matchLabels: {
+                  app: typedInput.name
+                }
+              },
+              template: {
+                metadata: {
+                  labels: {
+                    app: typedInput.name
+                  }
+                },
+                spec: {
+                  containers: [{
+                    name: typedInput.name,
+                    image: typedInput.template === "custom" ? (typedInput.customConfig?.image || "nginx") : typedInput.template,
+                    ports: typedInput.ports ? typedInput.ports.map(port => ({ containerPort: port })) : undefined,
+                    ...(typedInput.customConfig || {})
+                  }]
+                }
+              }
             }
-          );
+          };
+          
+          return await kubectlCreate(k8sManager, {
+            resourceType: "deployment",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            manifest: JSON.stringify(deploymentManifest)
+          });
         }
 
         case "update_deployment": {
-          return await updateDeployment(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              template: string;
-              containerName?: string;
-              replicas?: number;
-              customConfig?: any;
-            }
+          // Use kubectl_apply instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            template: string;
+            containerName?: string;
+            replicas?: number;
+            customConfig?: any;
+          };
+          
+          // First get the current deployment
+          const getCurrentDeployment = await kubectlGet(k8sManager, {
+            resourceType: "deployment",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            output: "json"
+          });
+          
+          const currentDeployment = JSON.parse(getCurrentDeployment.content[0].text);
+          
+          // Update the deployment
+          if (typedInput.replicas !== undefined) {
+            currentDeployment.spec.replicas = typedInput.replicas;
+          }
+          
+          // Find the container to update
+          const containerName = typedInput.containerName || typedInput.name;
+          const containerIndex = currentDeployment.spec.template.spec.containers.findIndex(
+            (c: any) => c.name === containerName
           );
+          
+          if (containerIndex >= 0) {
+            // Update container with custom config
+            if (typedInput.customConfig) {
+              currentDeployment.spec.template.spec.containers[containerIndex] = {
+                ...currentDeployment.spec.template.spec.containers[containerIndex],
+                ...typedInput.customConfig
+              };
+            }
+            
+            // Update image if template is specified
+            if (typedInput.template && typedInput.template !== "custom") {
+              currentDeployment.spec.template.spec.containers[containerIndex].image = typedInput.template;
+            }
+          }
+          
+          return await kubectlApply(k8sManager, {
+            manifest: JSON.stringify(currentDeployment),
+            namespace: typedInput.namespace
+          });
         }
 
         case "scale_deployment": {
@@ -674,35 +753,71 @@ server.setRequestHandler(
         }
 
         case "create_configmap": {
-          return await createConfigMap(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              data: Record<string, string>;
-            }
-          );
+          // Use kubectl_create instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            data: Record<string, string>;
+          };
+          
+          // Create ConfigMap manifest
+          const configMapManifest = {
+            apiVersion: "v1",
+            kind: "ConfigMap",
+            metadata: {
+              name: typedInput.name,
+              namespace: typedInput.namespace
+            },
+            data: typedInput.data
+          };
+          
+          return await kubectlCreate(k8sManager, {
+            resourceType: "configmap",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            manifest: JSON.stringify(configMapManifest)
+          });
         }
 
         case "update_configmap": {
-          return await updateConfigMap(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              data: Record<string, string>;
-            }
-          );
+          // Use kubectl_apply instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            data: Record<string, string>;
+          };
+          
+          // First get the current configmap
+          const getCurrentConfigMap = await kubectlGet(k8sManager, {
+            resourceType: "configmap",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            output: "json"
+          });
+          
+          const currentConfigMap = JSON.parse(getCurrentConfigMap.content[0].text);
+          
+          // Update the data field
+          currentConfigMap.data = typedInput.data;
+          
+          return await kubectlApply(k8sManager, {
+            manifest: JSON.stringify(currentConfigMap),
+            namespace: typedInput.namespace
+          });
         }
 
         case "delete_configmap": {
-          return await deleteConfigMap(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-            }
-          );
+          // Use kubectl_delete instead
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+          };
+          
+          return await kubectlDelete(k8sManager, {
+            resourceType: "configmap",
+            name: typedInput.name,
+            namespace: typedInput.namespace
+          });
         }
 
         case "create_service": {
