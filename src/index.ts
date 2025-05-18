@@ -42,15 +42,7 @@ import {
   scaleDeployment,
   scaleDeploymentSchema,
 } from "./tools/scale_deployment.js";
-import { listContexts, listContextsSchema } from "./tools/list_contexts.js";
-import {
-  getCurrentContext,
-  getCurrentContextSchema,
-} from "./tools/get_current_context.js";
-import {
-  setCurrentContext,
-  setCurrentContextSchema,
-} from "./tools/set_current_context.js";
+import { kubectlContext, kubectlContextSchema } from "./tools/kubectl-context.js";
 import { kubectlGet, kubectlGetSchema } from "./tools/kubectl-get.js";
 import { kubectlDescribe, kubectlDescribeSchema } from "./tools/kubectl-describe.js";
 import { kubectlList, kubectlListSchema } from "./tools/kubectl-list.js";
@@ -91,9 +83,7 @@ const allTools = [
   scaleDeploymentSchema,
   
   // Kubernetes context management
-  listContextsSchema,
-  getCurrentContextSchema,
-  setCurrentContextSchema,
+  kubectlContextSchema,
   
   // Special operations that aren't covered by simple kubectl commands
   explainResourceSchema,
@@ -152,6 +142,16 @@ server.setRequestHandler(
       const { name, arguments: input = {} } = request.params;
 
       // Handle new kubectl-style commands
+      if (name === "kubectl_context") {
+        return await kubectlContext(k8sManager, input as {
+          operation: "list" | "get" | "set";
+          name?: string;
+          showCurrent?: boolean;
+          detailed?: boolean;
+          output?: string;
+        });
+      }
+
       if (name === "kubectl_get") {
         return await kubectlGet(k8sManager, input as {
           resourceType: string;
@@ -533,21 +533,33 @@ server.setRequestHandler(
         }
 
         case "list_contexts": {
-          return await listContexts(
+          return await kubectlContext(
             k8sManager,
-            input as { showCurrent?: boolean }
+            { 
+              operation: "list", 
+              showCurrent: (input as { showCurrent?: boolean }).showCurrent 
+            }
           );
         }
 
         case "get_current_context": {
-          return await getCurrentContext(
+          return await kubectlContext(
             k8sManager,
-            input as { detailed?: boolean }
+            { 
+              operation: "get", 
+              detailed: (input as { detailed?: boolean }).detailed 
+            }
           );
         }
 
         case "set_current_context": {
-          return await setCurrentContext(k8sManager, input as { name: string });
+          return await kubectlContext(
+            k8sManager,
+            { 
+              operation: "set", 
+              name: (input as { name: string }).name 
+            }
+          );
         }
 
         case "list_jobs": {
