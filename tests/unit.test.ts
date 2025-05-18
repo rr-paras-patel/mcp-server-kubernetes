@@ -18,6 +18,7 @@ import { ScaleDeploymentResponseSchema } from "../src/models/response-schemas.js
 // Add KubectlResponseSchema for the unified kubectl commands
 import { KubectlResponseSchema } from "../src/models/kubectl-models.js";
 import { z } from "zod";
+import { asResponseSchema } from "./context-helper";
 
 /**
  * Utility function to create a promise that resolves after specified milliseconds
@@ -103,7 +104,7 @@ describe("kubernetes server operations", () => {
       {
         method: "tools/list",
       },
-      ListToolsResponseSchema
+      asResponseSchema(ListToolsResponseSchema)
     );
     expect(toolsList.tools).toBeDefined();
     expect(toolsList.tools.length).toBeGreaterThan(0);
@@ -127,7 +128,7 @@ describe("kubernetes server operations", () => {
           },
         },
       },
-      KubectlResponseSchema // Use KubectlResponseSchema for all kubectl commands
+      asResponseSchema(KubectlResponseSchema) // Use KubectlResponseSchema for all kubectl commands
     );
     expect(namespacesResult.content[0].type).toBe("text");
     const namespaces = JSON.parse(namespacesResult.content[0].text);
@@ -147,7 +148,7 @@ describe("kubernetes server operations", () => {
           },
         },
       },
-      KubectlResponseSchema
+      asResponseSchema(KubectlResponseSchema)
     );
     expect(listNodesResult.content[0].type).toBe("text");
     const nodes = JSON.parse(listNodesResult.content[0].text);
@@ -176,7 +177,7 @@ describe("kubernetes server operations", () => {
                 },
               },
             },
-            KubectlResponseSchema
+            asResponseSchema(KubectlResponseSchema)
           );
 
           expect(describeNodeResult.content[0].type).toBe("text");
@@ -220,7 +221,7 @@ describe("kubernetes server operations", () => {
         },
       },
       // @ts-ignore - Ignoring type error for now to get tests running
-      z.any()
+      asResponseSchema(z.any())
     );
 
     expect(describeNodeResult.content[0].type).toBe("text");
@@ -258,7 +259,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        ListPodsResponseSchema
+        asResponseSchema(ListPodsResponseSchema)
       );
 
       const podsResponse = JSON.parse(existingPods.content[0].text);
@@ -282,7 +283,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          DeletePodResponseSchema
+          asResponseSchema(DeletePodResponseSchema)
         );
 
         // Wait for pod to be fully terminated
@@ -304,7 +305,7 @@ describe("kubernetes server operations", () => {
                   },
                 },
               },
-              ListPodsResponseSchema
+              asResponseSchema(ListPodsResponseSchema)
             );
             await sleep(500);
           } catch (error) {
@@ -355,7 +356,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        CreatePodResponseSchema
+        asResponseSchema(CreatePodResponseSchema)
       );
 
       expect(createPodResult.content[0].type).toBe("text");
@@ -379,7 +380,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          ListPodsResponseSchema
+          asResponseSchema(ListPodsResponseSchema)
         );
 
         const status = JSON.parse(podStatus.content[0].text);
@@ -400,7 +401,7 @@ describe("kubernetes server operations", () => {
                 },
               },
             },
-            ListPodsResponseSchema
+            asResponseSchema(ListPodsResponseSchema)
           );
 
           expect(logsResult.content[0].type).toBe("text");
@@ -426,7 +427,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        DeletePodResponseSchema
+        asResponseSchema(DeletePodResponseSchema)
       );
 
       expect(deletePodResult.content[0].type).toBe("text");
@@ -452,7 +453,7 @@ describe("kubernetes server operations", () => {
                   },
                 },
               },
-              ListPodsResponseSchema
+              asResponseSchema(ListPodsResponseSchema)
             );
 
             // Pod still exists, check if it's in Terminating state
@@ -554,7 +555,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
 
       expect(createPodResult.content[0].type).toBe("text");
@@ -582,7 +583,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          KubectlResponseSchema
+          asResponseSchema(KubectlResponseSchema)
         );
 
         const status = JSON.parse(podStatus.content[0].text);
@@ -608,7 +609,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
 
       // Check that the description contains expected configuration values
@@ -637,7 +638,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
 
       // Verify JSON details of the pod
@@ -664,7 +665,7 @@ describe("kubernetes server operations", () => {
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
 
       expect(deletePodResult.content[0].type).toBe("text");
@@ -749,7 +750,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          KubectlResponseSchema
+          asResponseSchema(KubectlResponseSchema)
         );
 
         expect(createDeploymentResult.content[0].type).toBe("text");
@@ -776,7 +777,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          KubectlResponseSchema
+          asResponseSchema(KubectlResponseSchema)
         );
 
         expect(getDeploymentResult.content[0].type).toBe("text");
@@ -797,7 +798,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          ScaleDeploymentResponseSchema
+          asResponseSchema(ScaleDeploymentResponseSchema)
         );
 
         expect(scaleDeploymentResult.content[0].success).toBe(true);
@@ -818,7 +819,7 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          KubectlResponseSchema
+          asResponseSchema(KubectlResponseSchema)
         );
 
         expect(deleteDeploymentResult.content[0].type).toBe("text");

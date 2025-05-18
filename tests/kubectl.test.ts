@@ -4,6 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { KubectlResponseSchema } from "../src/models/kubectl-models.js";
 import { GetEventsResponseSchema } from "../src/models/response-schemas.js";
 import { z } from "zod";
+import { asResponseSchema } from "./context-helper";
 
 // Helper function to make schemas work with client.request
 function asResponseSchema<T extends z.ZodTypeAny>(schema: T) {
