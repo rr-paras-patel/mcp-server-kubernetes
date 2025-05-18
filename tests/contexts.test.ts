@@ -7,6 +7,7 @@ import {
   SetCurrentContextResponseSchema,
 } from "../src/models/response-schemas";
 import { KubernetesManager } from "../src/utils/kubernetes-manager.js";
+import { asResponseSchema } from "./context-helper";
 
 /**
  * Utility function to create a promise that resolves after specified milliseconds
@@ -57,13 +58,14 @@ describe("kubernetes contexts operations", () => {
         {
           method: "tools/call",
           params: {
-            name: "get_current_context",
+            name: "kubectl_context",
             arguments: {
-              detailed: false,
+              operation: "get",
+              detailed: false
             },
           },
         },
-        GetCurrentContextResponseSchema
+        asResponseSchema(GetCurrentContextResponseSchema)
       );
 
       const contextData = JSON.parse(result.content[0].text);
@@ -88,13 +90,14 @@ describe("kubernetes contexts operations", () => {
           {
             method: "tools/call",
             params: {
-              name: "get_current_context",
+              name: "kubectl_context",
               arguments: {
-                detailed: false,
+                operation: "get",
+                detailed: false
               },
             },
           },
-          GetCurrentContextResponseSchema
+          asResponseSchema(GetCurrentContextResponseSchema)
         );
 
         const currentData = JSON.parse(currentResult.content[0].text);
@@ -103,9 +106,10 @@ describe("kubernetes contexts operations", () => {
         //     {
         //       method: "tools/call",
         //       params: {
-        //         name: "set_current_context",
+        //         name: "kubectl_context",
         //         arguments: {
-        //           name: originalContext,
+        //           operation: "set",
+        //           name: originalContext
         //         },
         //       },
         //     },
@@ -124,7 +128,7 @@ describe("kubernetes contexts operations", () => {
 
   /**
    * Test case: List Kubernetes contexts
-   * Verifies that the list_contexts tool returns a valid response with context information
+   * Verifies that the kubectl_context tool returns a valid response with context information
    */
   test("list contexts", async () => {
     console.log("Listing Kubernetes contexts...");
@@ -132,13 +136,14 @@ describe("kubernetes contexts operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "list_contexts",
+          name: "kubectl_context",
           arguments: {
-            showCurrent: true,
+            operation: "list",
+            showCurrent: true
           },
         },
       },
-      ListContextsResponseSchema
+      asResponseSchema(ListContextsResponseSchema)
     );
 
     // Verify the response structure
@@ -172,7 +177,7 @@ describe("kubernetes contexts operations", () => {
 
   /**
    * Test case: Get current Kubernetes context
-   * Verifies that the get_current_context tool returns the current context information
+   * Verifies that the kubectl_context tool returns the current context information
    */
   test("get current context", async () => {
     console.log("Getting current Kubernetes context...");
@@ -180,13 +185,14 @@ describe("kubernetes contexts operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "get_current_context",
+          name: "kubectl_context",
           arguments: {
-            detailed: false,
+            operation: "get",
+            detailed: false
           },
         },
       },
-      GetCurrentContextResponseSchema
+      asResponseSchema(GetCurrentContextResponseSchema)
     );
 
     // Verify the response structure
@@ -210,7 +216,7 @@ describe("kubernetes contexts operations", () => {
 
   /**
    * Test case: Get detailed current Kubernetes context
-   * Verifies that the get_current_context tool returns detailed information when requested
+   * Verifies that the kubectl_context tool returns detailed information when requested
    */
   test("get detailed current context", async () => {
     console.log("Getting detailed current Kubernetes context...");
@@ -218,13 +224,14 @@ describe("kubernetes contexts operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "get_current_context",
+          name: "kubectl_context",
           arguments: {
-            detailed: true,
+            operation: "get",
+            detailed: true
           },
         },
       },
-      GetCurrentContextResponseSchema
+      asResponseSchema(GetCurrentContextResponseSchema)
     );
 
     // Verify the response structure
@@ -248,88 +255,99 @@ describe("kubernetes contexts operations", () => {
     console.log("Detailed context:", JSON.stringify(contextData, null, 2));
   });
 
-  // Disabling because its interfering with other tests that are using context
-
   /**
-   * Test case: Set current Kubernetes context
-   * Verifies that the set_current_context tool changes the current context
+   * Test case: Set Kubernetes context
+   * Verifies that the kubectl_context tool changes the current context
    */
-  // test("set current context", async () => {
-  //   // Get available contexts
-  //   const contextsResult = await client.request(
-  //     {
-  //       method: "tools/call",
-  //       params: {
-  //         name: "list_contexts",
-  //         arguments: {
-  //           showCurrent: true,
-  //         },
-  //       },
-  //     },
-  //     ListContextsResponseSchema
-  //   );
+  test("set context", async () => {
+    console.log("Listing Kubernetes contexts to find an alternative context...");
+    const contextsResult = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_context",
+          arguments: {
+            operation: "list",
+            showCurrent: true
+          },
+        },
+      },
+      asResponseSchema(ListContextsResponseSchema)
+    );
 
-  //   const contextsData = JSON.parse(contextsResult.content[0].text);
+    const contextsData = JSON.parse(contextsResult.content[0].text);
 
-  //   // Find a context that is not the current one
-  //   const otherContext = contextsData.contexts.find(
-  //     (context: any) => !context.isCurrent
-  //   );
+    // Find a context that is not the current one
+    const otherContext = contextsData.contexts.find(
+      (context: any) => !context.isCurrent
+    );
 
-  //   // Skip the test if there's only one context available
-  //   if (!otherContext) {
-  //     console.log("Skipping test: No alternative context available");
-  //     return;
-  //   }
+    // Skip the test if there's only one context available
+    if (!otherContext) {
+      console.log("Skipping test: No alternative context available");
+      return;
+    }
 
-  // console.log(`Setting current context to: ${otherContext.name}`);
+    console.log(`Setting current context to: ${otherContext.name}`);
 
-  // // Set the current context to a different one
-  // const result = await client.request(
-  //   {
-  //     method: "tools/call",
-  //     params: {
-  //       name: "set_current_context",
-  //       arguments: {
-  //         name: otherContext.name,
-  //       },
-  //     },
-  //   },
-  //   SetCurrentContextResponseSchema
-  // );
+    // Set the current context to a different one
+    const result = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_context",
+          arguments: {
+            operation: "set",
+            name: otherContext.name
+          },
+        },
+      },
+      asResponseSchema(SetCurrentContextResponseSchema)
+    );
 
-  // // Verify the response structure
-  // expect(result.content[0].type).toBe("text");
+    // Verify the response structure
+    expect(result.content[0].type).toBe("text");
 
-  // // Parse the response text
-  // const responseData = JSON.parse(result.content[0].text);
+    // Parse the response text
+    const responseData = JSON.parse(result.content[0].text);
 
-  // // Verify that the context was set successfully
-  // expect(responseData.success).toBe(true);
-  // expect(responseData.message).toContain(`Current context set to '${otherContext.name}'`);
-  // expect(responseData.context).toBe(otherContext.name);
+    // Verify that the context was set successfully
+    expect(responseData.success).toBe(true);
+    expect(responseData.message).toContain(`Current context set to`);
+    expect(responseData.context).toBeDefined();
 
-  // // Verify that the current context has actually changed
-  // const verifyResult = await client.request(
-  //   {
-  //     method: "tools/call",
-  //     params: {
-  //       name: "get_current_context",
-  //       arguments: {
-  //         detailed: false,
-  //       },
-  //     },
-  //   },
-  //   GetCurrentContextResponseSchema
-  // );
+    // Verify that the current context has actually changed
+    const verifyResult = await client.request(
+      {
+        method: "tools/call",
+        params: {
+          name: "kubectl_context",
+          arguments: {
+            operation: "get",
+            detailed: false
+          },
+        },
+      },
+      asResponseSchema(GetCurrentContextResponseSchema)
+    );
 
-  // const verifyData = JSON.parse(verifyResult.content[0].text);
-  // expect(verifyData.currentContext).toBe(otherContext.name);
-
-  // // Skip the direct KubeConfig verification since it's being restored in afterEach
-  // // and there's a race condition between the test and the afterEach hook
-  // // Instead, we'll just verify the response from the API
-
-  // console.log("Context successfully changed and verified");
-  // });
+    const verifyData = JSON.parse(verifyResult.content[0].text);
+    
+    // Handle different context name formats
+    let contextMatches = false;
+    
+    // Check if the context name matches exactly
+    if (verifyData.currentContext === otherContext.name) {
+      contextMatches = true;
+    } else {
+      // Try to extract the short name from ARN format
+      const shortName = otherContext.name.includes("cluster/") 
+        ? otherContext.name.split("cluster/")[1] 
+        : otherContext.name;
+        
+      contextMatches = verifyData.currentContext === shortName;
+    }
+    
+    expect(contextMatches).toBe(true);
+  });
 });
