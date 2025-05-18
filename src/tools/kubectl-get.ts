@@ -11,7 +11,7 @@ export const kubectlGetSchema = {
     properties: {
       resourceType: { 
         type: "string", 
-        description: "Type of resource to get (e.g., pods, deployments, services, configmaps, etc.)" 
+        description: "Type of resource to get (e.g., pods, deployments, services, configmaps, events, etc.)" 
       },
       name: { 
         type: "string", 
@@ -42,6 +42,11 @@ export const kubectlGetSchema = {
         type: "string",
         description: "Filter resources by field selector (e.g. 'metadata.name=my-pod')",
         optional: true
+      },
+      sortBy: {
+        type: "string",
+        description: "Sort events by a field (default: lastTimestamp). Only applicable for events.",
+        optional: true
       }
     },
     required: ["resourceType"],
@@ -58,6 +63,7 @@ export async function kubectlGet(
     allNamespaces?: boolean;
     labelSelector?: string;
     fieldSelector?: string;
+    sortBy?: string;
   }
 ) {
   try {
@@ -68,6 +74,7 @@ export async function kubectlGet(
     const allNamespaces = input.allNamespaces || false;
     const labelSelector = input.labelSelector || "";
     const fieldSelector = input.fieldSelector || "";
+    const sortBy = input.sortBy;
     
     // Build the kubectl command
     let command = "kubectl get ";
@@ -80,8 +87,12 @@ export async function kubectlGet(
       command += ` ${name}`;
     }
     
+    // For events, default to all namespaces unless explicitly specified
+    const shouldShowAllNamespaces = resourceType === "events" ? 
+      (input.namespace ? false : true) : allNamespaces;
+    
     // Add namespace flag unless all namespaces is specified
-    if (allNamespaces) {
+    if (shouldShowAllNamespaces) {
       command += " --all-namespaces";
     } else if (namespace && !isNonNamespacedResource(resourceType)) {
       command += ` -n ${namespace}`;
@@ -97,6 +108,13 @@ export async function kubectlGet(
       command += ` --field-selector=${fieldSelector}`;
     }
     
+    // Add sort-by for events
+    if (resourceType === "events" && sortBy) {
+      command += ` --sort-by=.${sortBy}`;
+    } else if (resourceType === "events") {
+      command += ` --sort-by=.lastTimestamp`;
+    }
+    
     // Add output format
     if (output === "json") {
       command += " -o json";
@@ -107,7 +125,11 @@ export async function kubectlGet(
     } else if (output === "name") {
       command += " -o name";
     } else if (output === "custom") {
-      command += " -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,STATUS:.status.phase,AGE:.metadata.creationTimestamp";
+      if (resourceType === "events") {
+        command += ` -o 'custom-columns=LAST SEEN:.lastTimestamp,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.kind/.involvedObject.name,MESSAGE:.message'`;
+      } else {
+        command += ` -o 'custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,STATUS:.status.phase,AGE:.metadata.creationTimestamp'`;
+      }
     }
     
     // Execute the command
@@ -122,22 +144,47 @@ export async function kubectlGet(
           const parsed = JSON.parse(result);
           
           if (parsed.kind && parsed.kind.endsWith("List") && parsed.items) {
-            const items = parsed.items.map((item: any) => ({
-              name: item.metadata?.name || "",
-              namespace: item.metadata?.namespace || "",
-              kind: item.kind || resourceType,
-              status: getResourceStatus(item),
-              createdAt: item.metadata?.creationTimestamp
-            }));
-            
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify({ items }, null, 2),
+            if (resourceType === "events") {
+              const formattedEvents = parsed.items.map((event: any) => ({
+                type: event.type || "",
+                reason: event.reason || "",
+                message: event.message || "",
+                involvedObject: {
+                  kind: event.involvedObject?.kind || "",
+                  name: event.involvedObject?.name || "",
+                  namespace: event.involvedObject?.namespace || "",
                 },
-              ],
-            };
+                firstTimestamp: event.firstTimestamp || "",
+                lastTimestamp: event.lastTimestamp || "",
+                count: event.count || 0,
+              }));
+              
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify({ events: formattedEvents }, null, 2),
+                  },
+                ],
+              };
+            } else {
+              const items = parsed.items.map((item: any) => ({
+                name: item.metadata?.name || "",
+                namespace: item.metadata?.namespace || "",
+                kind: item.kind || resourceType,
+                status: getResourceStatus(item),
+                createdAt: item.metadata?.creationTimestamp
+              }));
+              
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify({ items }, null, 2),
+                  },
+                ],
+              };
+            }
           }
         } catch (parseError) {
           // If JSON parsing fails, return the raw output

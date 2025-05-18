@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { getJobLogs, getJobLogsSchema } from "./tools/get_job_logs.js";
 import {
   installHelmChart,
   installHelmChartSchema,
@@ -16,8 +15,6 @@ import {
   listApiResources,
   listApiResourcesSchema,
 } from "./tools/kubectl-operations.js";
-import { getLogs, getLogsSchema } from "./tools/get_logs.js";
-import { getEvents, getEventsSchema } from "./tools/get_events.js";
 import { execInPod, execInPodSchema } from "./tools/exec_in_pod.js";
 import { getResourceHandlers } from "./resources/handlers.js";
 import {
@@ -60,6 +57,7 @@ import { kubectlList, kubectlListSchema } from "./tools/kubectl-list.js";
 import { kubectlApply, kubectlApplySchema } from "./tools/kubectl-apply.js";
 import { kubectlDelete, kubectlDeleteSchema } from "./tools/kubectl-delete.js";
 import { kubectlCreate, kubectlCreateSchema } from "./tools/kubectl-create.js";
+import { kubectlLogs, kubectlLogsSchema } from "./tools/kubectl-logs.js";
 
 // Check if non-destructive tools only mode is enabled
 const nonDestructiveTools =
@@ -84,6 +82,7 @@ const allTools = [
   kubectlApplySchema,
   kubectlDeleteSchema,
   kubectlCreateSchema,
+  kubectlLogsSchema,
   
   // Creation tools
   createDeploymentSchema,
@@ -98,9 +97,6 @@ const allTools = [
   
   // Special operations that aren't covered by simple kubectl commands
   explainResourceSchema,
-  getEventsSchema,
-  getJobLogsSchema,
-  getLogsSchema,
   
   // Helm operations
   installHelmChartSchema,
@@ -219,6 +215,33 @@ server.setRequestHandler(
           namespace?: string;
           dryRun?: boolean;
           validate?: boolean;
+        });
+      }
+      
+      if (name === "kubectl_logs") {
+        return await kubectlLogs(k8sManager, input as {
+          resourceType: string;
+          name: string;
+          namespace: string;
+          container?: string;
+          tail?: number;
+          since?: string;
+          sinceTime?: string;
+          timestamps?: boolean;
+          previous?: boolean;
+          follow?: boolean;
+          labelSelector?: string;
+        });
+      }
+      
+      if (name === "kubectl_events") {
+        return await kubectlGet(k8sManager, {
+          resourceType: "events",
+          namespace: (input as { namespace?: string }).namespace,
+          fieldSelector: (input as { fieldSelector?: string }).fieldSelector,
+          labelSelector: (input as { labelSelector?: string }).labelSelector,
+          sortBy: (input as { sortBy?: string }).sortBy,
+          output: (input as { output?: string }).output
         });
       }
 
@@ -473,29 +496,40 @@ server.setRequestHandler(
         }
 
         case "get_events": {
-          return await getEvents(
-            k8sManager,
-            input as {
-              namespace?: string;
-              fieldSelector?: string;
-            }
-          );
+          // Use kubectl_get instead of getEvents
+          return await kubectlGet(k8sManager, {
+            resourceType: "events",
+            namespace: (input as { namespace?: string }).namespace,
+            fieldSelector: (input as { fieldSelector?: string }).fieldSelector
+          });
         }
 
         case "get_logs": {
-          return await getLogs(
-            k8sManager,
-            input as {
-              resourceType: string;
-              name?: string;
-              namespace?: string;
-              labelSelector?: string;
-              container?: string;
-              tail?: number;
-              since?: number;
-              timestamps?: boolean;
-            }
-          );
+          // Use kubectl_logs instead of getLogs
+          const typedInput = input as {
+            resourceType: string;
+            name?: string;
+            namespace?: string;
+            labelSelector?: string;
+            container?: string;
+            tail?: number;
+            since?: string;
+            timestamps?: boolean;
+          };
+          
+          // Convert since from number (seconds) to string format if needed
+          const since = typedInput.since ? `${typedInput.since}s` : undefined;
+          
+          return await kubectlLogs(k8sManager, {
+            resourceType: typedInput.resourceType,
+            name: typedInput.name || "",
+            namespace: typedInput.namespace || "default",
+            labelSelector: typedInput.labelSelector,
+            container: typedInput.container,
+            tail: typedInput.tail,
+            since,
+            timestamps: typedInput.timestamps
+          });
         }
 
         case "list_contexts": {
@@ -537,15 +571,21 @@ server.setRequestHandler(
         }
 
         case "get_job_logs": {
-          return await getJobLogs(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              tail?: number;
-              timestamps?: boolean;
-            }
-          );
+          // Use kubectl_logs instead of getJobLogs
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            tail?: number;
+            timestamps?: boolean;
+          };
+          
+          return await kubectlLogs(k8sManager, {
+            resourceType: "job",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            tail: typedInput.tail,
+            timestamps: typedInput.timestamps
+          });
         }
 
         case "install_helm_chart": {
