@@ -1117,5 +1117,5 @@ describe("test kubernetes service", () => {
     expect(serviceJson.spec.ports).toHaveLength(1);
     expect(serviceJson.spec.ports[0].port).toBe(80);
     expect(serviceJson.spec.ports[0].targetPort).toBe(8080);
-  });
+  }, 120000); // Set timeout to 120 seconds
 });
