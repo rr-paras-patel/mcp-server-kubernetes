@@ -2,14 +2,8 @@ import { expect, test, describe, beforeEach, afterEach } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { KubectlResponseSchema } from "../src/models/kubectl-models.js";
-import { GetEventsResponseSchema } from "../src/models/response-schemas.js";
 import { z } from "zod";
 import { asResponseSchema } from "./context-helper";
-
-// Helper function to make schemas work with client.request
-function asResponseSchema<T extends z.ZodTypeAny>(schema: T) {
-  return schema as unknown as z.ZodType<z.infer<T>, z.ZodTypeDef, object>;
-}
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -194,13 +188,15 @@ describe("kubectl operations", () => {
           {
             method: "tools/call",
             params: {
-              name: "get_events",
+              name: "kubectl_get",
               arguments: {
+                resourceType: "events",
                 namespace: "default",
+                output: "json"
               },
             },
           },
-          asResponseSchema(GetEventsResponseSchema)
+          asResponseSchema(KubectlResponseSchema)
         );
       });
 
@@ -231,11 +227,15 @@ describe("kubectl operations", () => {
           {
             method: "tools/call",
             params: {
-              name: "get_events",
-              arguments: {},
+              name: "kubectl_get",
+              arguments: {
+                resourceType: "events",
+                allNamespaces: true,
+                output: "json"
+              },
             },
           },
-          asResponseSchema(GetEventsResponseSchema)
+          asResponseSchema(KubectlResponseSchema)
         );
       });
 
@@ -251,14 +251,16 @@ describe("kubectl operations", () => {
           {
             method: "tools/call",
             params: {
-              name: "get_events",
+              name: "kubectl_get",
               arguments: {
+                resourceType: "events",
                 namespace: "default",
                 fieldSelector: "type=Normal",
+                output: "json"
               },
             },
           },
-          asResponseSchema(GetEventsResponseSchema)
+          asResponseSchema(KubectlResponseSchema)
         );
       });
 

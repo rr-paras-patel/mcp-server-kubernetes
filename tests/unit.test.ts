@@ -388,12 +388,12 @@ describe("kubernetes server operations", () => {
           podRunning = true;
           console.log(`Pod ${podName} is running. Checking logs...`);
 
-          // Check pod logs once running using kubectl_get with logs
+          // Check pod logs once running using kubectl_logs
           const logsResult = await client.request(
             {
               method: "tools/call",
               params: {
-                name: "get_logs",
+                name: "kubectl_logs",
                 arguments: {
                   resourceType: "pod",
                   name: podName,
@@ -401,7 +401,7 @@ describe("kubernetes server operations", () => {
                 },
               },
             },
-            asResponseSchema(ListPodsResponseSchema)
+            asResponseSchema(KubectlResponseSchema)
           );
 
           expect(logsResult.content[0].type).toBe("text");
