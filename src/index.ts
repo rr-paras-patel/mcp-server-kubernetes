@@ -2,7 +2,6 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 // Import only the function implementations we need for the switch statement
-import { listPods } from "./tools/list_pods.js";
 import { listNodes } from "./tools/list_nodes.js";
 import { listServices } from "./tools/list_services.js";
 import { listDeployments } from "./tools/list_deployments.js";
@@ -25,15 +24,8 @@ import {
   listApiResources,
   listApiResourcesSchema,
 } from "./tools/kubectl-operations.js";
-import {
-  createNamespace,
-  createNamespaceSchema,
-} from "./tools/create_namespace.js";
-import { createPod, createPodSchema } from "./tools/create_pod.js";
 import { createCronJob, createCronJobSchema } from "./tools/create_cronjob.js";
 import { DeleteCronJob, DeleteCronJobSchema } from "./tools/delete_cronjob.js";
-import { deletePod, deletePodSchema } from "./tools/delete_pod.js";
-import { describePod } from "./tools/describe_pod.js";
 import { getLogs, getLogsSchema } from "./tools/get_logs.js";
 import { getEvents, getEventsSchema } from "./tools/get_events.js";
 import { execInPod, execInPodSchema } from "./tools/exec_in_pod.js";
@@ -51,10 +43,6 @@ import { KubernetesManager } from "./types.js";
 import { serverConfig } from "./config/server-config.js";
 import { createDeploymentSchema } from "./config/deployment-config.js";
 import { listNamespacesSchema } from "./config/namespace-config.js";
-import {
-  deleteNamespace,
-  deleteNamespaceSchema,
-} from "./tools/delete_namespace.js";
 import { cleanupSchema } from "./config/cleanup-config.js";
 import { startSSEServer } from "./utils/sse.js";
 import {
@@ -93,10 +81,6 @@ import {
   setCurrentContext,
   setCurrentContextSchema,
 } from "./tools/set_current_context.js";
-import { createService, createServiceSchema } from "./tools/create_service.js";
-import { describeService } from "./tools/describe_service.js";
-import { updateService, updateServiceSchema } from "./tools/update_service.js";
-import { deleteService, deleteServiceSchema } from "./tools/delete_service.js";
 import { kubectlGet, kubectlGetSchema } from "./tools/kubectl-get.js";
 import { kubectlDescribe, kubectlDescribeSchema } from "./tools/kubectl-describe.js";
 import { kubectlList, kubectlListSchema } from "./tools/kubectl-list.js";
@@ -110,10 +94,7 @@ const nonDestructiveTools =
 
 // Define destructive tools (delete and uninstall operations)
 const destructiveTools = [
-  deletePodSchema,
-  deleteServiceSchema,
-  deleteDeploymentSchema,
-  deleteNamespaceSchema,
+  kubectlDeleteSchema, // This replaces all individual delete operations 
   uninstallHelmChartSchema,
   DeleteCronJobSchema,
   cleanupSchema, // Cleanup is also destructive as it deletes resources
@@ -134,23 +115,16 @@ const allTools = [
   
   // Creation tools
   createDeploymentSchema,
-  createNamespaceSchema,
-  createPodSchema,
   createCronJobSchema,
-  createServiceSchema,
   CreateConfigMapSchema,
   
   // Deletion tools
-  deletePodSchema,
   deleteDeploymentSchema,
-  deleteNamespaceSchema,
-  deleteServiceSchema,
   DeleteCronJobSchema,
   DeleteConfigMapSchema,
   
   // Update tools
   updateDeploymentSchema,
-  updateServiceSchema,
   UpdateConfigMapSchema,
   
   // Special operations
@@ -409,24 +383,45 @@ server.setRequestHandler(
         }
 
         case "create_namespace": {
-          return await createNamespace(
-            k8sManager,
-            input as {
-              name: string;
-            }
-          );
+          // Use kubectl_create instead of createNamespace
+          return await kubectlCreate(k8sManager, {
+            resourceType: "namespace",
+            name: (input as { name: string }).name
+          });
         }
 
         case "create_pod": {
-          return await createPod(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              template: string;
-              command?: string[];
+          // Use kubectl_create instead of createPod
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            template: string;
+            command?: string[];
+          };
+          
+          // Generate a minimal pod manifest
+          const podManifest = {
+            apiVersion: "v1",
+            kind: "Pod",
+            metadata: {
+              name: typedInput.name,
+              namespace: typedInput.namespace
+            },
+            spec: {
+              containers: [{
+                name: typedInput.name,
+                image: typedInput.template === "custom" ? "busybox" : typedInput.template,
+                command: typedInput.command
+              }]
             }
-          );
+          };
+          
+          return await kubectlCreate(k8sManager, {
+            resourceType: "pod",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            manifest: JSON.stringify(podManifest)
+          });
         }
 
         case "create_cronjob": {
@@ -454,14 +449,18 @@ server.setRequestHandler(
         }
 
         case "delete_pod": {
-          return await deletePod(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              ignoreNotFound?: boolean;
-            }
-          );
+          // Use kubectl_delete instead of deletePod
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            ignoreNotFound?: boolean;
+          };
+          
+          return await kubectlDelete(k8sManager, {
+            resourceType: "pod",
+            name: typedInput.name,
+            namespace: typedInput.namespace
+          });
         }
 
         case "explain_resource": {
@@ -617,13 +616,11 @@ server.setRequestHandler(
         }
 
         case "delete_namespace": {
-          return await deleteNamespace(
-            k8sManager,
-            input as {
-              name: string;
-              ignoreNotFound?: boolean;
-            }
-          );
+          // Use kubectl_delete instead of deleteNamespace
+          return await kubectlDelete(k8sManager, {
+            resourceType: "namespace",
+            name: (input as { name: string; ignoreNotFound?: boolean }).name
+          });
         }
 
         case "delete_deployment": {
@@ -709,52 +706,114 @@ server.setRequestHandler(
         }
 
         case "create_service": {
-          return await createService(
-            k8sManager,
-            input as {
-              name: string;
-              namespace?: string;
-              type?: "ClusterIP" | "NodePort" | "LoadBalancer";
-              selector?: Record<string, string>;
-              ports: Array<{
-                port: number;
-                targetPort?: number;
-                protocol?: string;
-                name?: string;
-                nodePort?: number;
-              }>;
+          // Use kubectl_create instead of createService
+          const typedInput = input as {
+            name: string;
+            namespace?: string;
+            type?: "ClusterIP" | "NodePort" | "LoadBalancer";
+            selector?: Record<string, string>;
+            ports: Array<{
+              port: number;
+              targetPort?: number;
+              protocol?: string;
+              name?: string;
+              nodePort?: number;
+            }>;
+          };
+          
+          // Create a service manifest
+          const serviceManifest = {
+            apiVersion: "v1",
+            kind: "Service",
+            metadata: {
+              name: typedInput.name,
+              namespace: typedInput.namespace || "default"
+            },
+            spec: {
+              selector: typedInput.selector || { app: typedInput.name },
+              type: typedInput.type || "ClusterIP",
+              ports: typedInput.ports.map(p => ({
+                port: p.port,
+                targetPort: p.targetPort || p.port,
+                protocol: p.protocol || "TCP",
+                name: p.name || `port-${p.port}`,
+                ...(p.nodePort && typedInput.type === "NodePort" ? { nodePort: p.nodePort } : {})
+              }))
             }
-          );
+          };
+          
+          return await kubectlCreate(k8sManager, {
+            resourceType: "service",
+            name: typedInput.name,
+            namespace: typedInput.namespace || "default",
+            manifest: JSON.stringify(serviceManifest)
+          });
         }
 
         case "update_service": {
-          return await updateService(
-            k8sManager,
-            input as {
-              name: string;
-              namespace: string;
-              type?: "ClusterIP" | "NodePort" | "LoadBalancer";
-              selector?: Record<string, string>;
-              ports?: Array<{
-                port: number;
-                targetPort?: number;
-                protocol?: string;
-                name?: string;
-                nodePort?: number;
-              }>;
+          // Use kubectl_apply instead of updateService
+          const typedInput = input as {
+            name: string;
+            namespace: string;
+            type?: "ClusterIP" | "NodePort" | "LoadBalancer";
+            selector?: Record<string, string>;
+            ports?: Array<{
+              port: number;
+              targetPort?: number;
+              protocol?: string;
+              name?: string;
+              nodePort?: number;
+            }>;
+          };
+          
+          // First get the current service
+          const getCurrentService = await kubectlGet(k8sManager, {
+            resourceType: "service",
+            name: typedInput.name,
+            namespace: typedInput.namespace,
+            output: "json"
+          });
+          
+          const currentService = JSON.parse(getCurrentService.content[0].text);
+          
+          // Create an updated service manifest
+          const updatedService = {
+            ...currentService,
+            spec: {
+              ...currentService.spec,
+              selector: typedInput.selector || currentService.spec.selector,
+              type: typedInput.type || currentService.spec.type,
+              ...(typedInput.ports ? { ports: typedInput.ports.map(p => ({
+                port: p.port,
+                targetPort: p.targetPort || p.port,
+                protocol: p.protocol || "TCP",
+                name: p.name || `port-${p.port}`,
+                ...(p.nodePort && (typedInput.type === "NodePort" || currentService.spec.type === "NodePort") 
+                  ? { nodePort: p.nodePort } 
+                  : {})
+              })) } : {})
             }
-          );
+          };
+          
+          return await kubectlApply(k8sManager, {
+            manifest: JSON.stringify(updatedService),
+            namespace: typedInput.namespace
+          });
         }
 
         case "delete_service": {
-          return await deleteService(
-            k8sManager,
-            input as {
-              name: string;
-              namespace?: string;
-              ignoreNotFound?: boolean;
-            }
-          );
+          // Use kubectl_delete instead of deleteService
+          const typedInput = input as {
+            name: string;
+            namespace?: string;
+            ignoreNotFound?: boolean;
+          };
+          
+          return await kubectlDelete(k8sManager, {
+            resourceType: "service",
+            name: typedInput.name,
+            namespace: typedInput.namespace || "default"
+          });
         }
 
         case "describe_service": {
