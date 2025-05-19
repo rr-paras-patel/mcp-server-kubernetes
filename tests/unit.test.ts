@@ -785,16 +785,17 @@ describe("kubernetes server operations", () => {
         expect(deployment.metadata.name).toBe(deploymentName);
         expect(deployment.spec.replicas).toBe(1);
 
-        // Keep using the original scale_deployment tool (as requested)
+        // Replace the old scale_deployment test with kubectl_scale 
         const scaleDeploymentResult = await client.request(
           {
             method: "tools/call",
             params: {
-              name: "scale_deployment",
+              name: "kubectl_scale",
               arguments: {
                 name: deploymentName,
                 namespace: "default",
                 replicas: 2,
+                resourceType: "deployment"
               },
             },
           },
@@ -804,6 +805,28 @@ describe("kubernetes server operations", () => {
         expect(scaleDeploymentResult.content[0].success).toBe(true);
         expect(scaleDeploymentResult.content[0].message).toContain(
           `Scaled deployment ${deploymentName} to 2 replicas`
+        );
+        
+        // Test scaling to a different number of replicas
+        const kubectlScaleResult = await client.request(
+          {
+            method: "tools/call",
+            params: {
+              name: "kubectl_scale",
+              arguments: {
+                name: deploymentName,
+                namespace: "default",
+                replicas: 3,
+                resourceType: "deployment"
+              },
+            },
+          },
+          asResponseSchema(ScaleDeploymentResponseSchema)
+        );
+
+        expect(kubectlScaleResult.content[0].success).toBe(true);
+        expect(kubectlScaleResult.content[0].message).toContain(
+          `Scaled deployment ${deploymentName} to 3 replicas`
         );
 
         // Cleanup using kubectl_delete
@@ -828,7 +851,7 @@ describe("kubernetes server operations", () => {
         expect(deleteText.includes(deploymentName) && deleteText.includes("deleted")).toBe(true);
 
         // Wait for cleanup
-        await sleep(5000);
+        await sleep(4000);
         return;
       } catch (e) {
         attempts++;

@@ -77,8 +77,9 @@ npx mcp-chat --config "%APPDATA%\Claude\claude_desktop_config.json"
   - Manage kubectl contexts with `kubectl_context`
   - Explain Kubernetes resources with `explain_resource`
   - List API resources with `list_api_resources`
+  - Scale resources with `kubectl_scale`
 - [x] Advanced operations
-  - Scale deployments with `scale_deployment`
+  - Scale deployments with `kubectl_scale` (replaces legacy `scale_deployment`)
   - Port forward to pods and services with `port_forward`
   - Run Helm operations
     - Install, upgrade, and uninstall charts
