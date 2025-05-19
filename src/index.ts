@@ -47,6 +47,9 @@ import { kubectlApply, kubectlApplySchema } from "./tools/kubectl-apply.js";
 import { kubectlDelete, kubectlDeleteSchema } from "./tools/kubectl-delete.js";
 import { kubectlCreate, kubectlCreateSchema } from "./tools/kubectl-create.js";
 import { kubectlLogs, kubectlLogsSchema } from "./tools/kubectl-logs.js";
+import { kubectlGeneric, kubectlGenericSchema } from "./tools/kubectl-generic.js";
+import { kubectlPatch, kubectlPatchSchema } from "./tools/kubectl-patch.js";
+import { kubectlRollout, kubectlRolloutSchema } from "./tools/kubectl-rollout.js";
 
 // Check if non-destructive tools only mode is enabled
 const nonDestructiveTools =
@@ -72,9 +75,12 @@ const allTools = [
   kubectlDeleteSchema,
   kubectlCreateSchema,
   kubectlLogsSchema,
+  kubectlScaleSchema,
+  kubectlPatchSchema,
+  kubectlRolloutSchema,
   
   // Special operations
-  kubectlScaleSchema,
+  // Remove the duplicate kubectlScaleSchema here
   
   // Kubernetes context management
   kubectlContextSchema,
@@ -91,6 +97,9 @@ const allTools = [
   PortForwardSchema,
   StopPortForwardSchema,
   execInPodSchema,
+  
+  // Generic kubectl command
+  kubectlGenericSchema,
 ];
 
 const k8sManager = new KubernetesManager();
@@ -225,6 +234,44 @@ server.setRequestHandler(
           previous?: boolean;
           follow?: boolean;
           labelSelector?: string;
+        });
+      }
+      
+      if (name === "kubectl_patch") {
+        return await kubectlPatch(k8sManager, input as {
+          resourceType: string;
+          name: string;
+          namespace?: string;
+          patchType?: "strategic" | "merge" | "json";
+          patchData?: object;
+          patchFile?: string;
+          dryRun?: boolean;
+        });
+      }
+      
+      if (name === "kubectl_rollout") {
+        return await kubectlRollout(k8sManager, input as {
+          subCommand: "history" | "pause" | "restart" | "resume" | "status" | "undo";
+          resourceType: "deployment" | "daemonset" | "statefulset";
+          name: string;
+          namespace?: string;
+          revision?: number;
+          toRevision?: number;
+          timeout?: string;
+          watch?: boolean;
+        });
+      }
+      
+      if (name === "kubectl_generic") {
+        return await kubectlGeneric(k8sManager, input as {
+          command: string;
+          subCommand?: string;
+          resourceType?: string;
+          name?: string;
+          namespace?: string;
+          outputFormat?: string;
+          flags?: Record<string, any>;
+          args?: string[];
         });
       }
       
