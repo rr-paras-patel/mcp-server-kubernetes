@@ -18,8 +18,8 @@ async function sleep(ms: number): Promise<void> {
 // Helper function to retry operations that might be flaky
 async function retry<T>(
   operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delayMs: number = 2000
+  maxRetries: number = 2,
+  delayMs: number = 1000
 ): Promise<T> {
   let lastError: Error | unknown;
 
@@ -61,7 +61,7 @@ describe("kubectl_generic command", () => {
     );
 
     await client.connect(transport);
-    await sleep(2000);
+    await sleep(1000);
   });
 
   afterEach(async () => {
@@ -80,14 +80,14 @@ describe("kubectl_generic command", () => {
               },
             },
           },
-          z.any()
+          KubectlResponseSchema
         );
       } catch (e) {
         // Ignore error if namespace doesn't exist
       }
 
       await transport.close();
-      await sleep(2000);
+      await sleep(1000);
     } catch (e) {
       console.error("Error during cleanup:", e);
     }

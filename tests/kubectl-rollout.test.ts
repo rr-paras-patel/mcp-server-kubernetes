@@ -22,8 +22,8 @@ async function sleep(ms: number): Promise<void> {
 // Helper function to retry operations that might be flaky
 async function retry<T>(
   operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delayMs: number = 2000
+  maxRetries: number = 2,
+  delayMs: number = 1000
 ): Promise<T> {
   let lastError: Error | unknown;
 
@@ -66,7 +66,7 @@ describe("kubectl_rollout command", () => {
     );
 
     await client.connect(transport);
-    await sleep(2000);
+    await sleep(1000);
     
     // Create a test namespace
     await retry(async () => {
@@ -162,7 +162,7 @@ describe("kubectl_rollout command", () => {
       }
       
       return response;
-    }, 5, 3000); // More retries with longer delay for deployment readiness
+    }, 3, 1500); // Optimized from 5 retries with 3000ms delay
   });
 
   afterEach(async () => {
@@ -188,7 +188,7 @@ describe("kubectl_rollout command", () => {
       }
       
       await transport.close();
-      await sleep(2000);
+      await sleep(1000);
     } catch (e) {
       console.error("Error during cleanup:", e);
     }
@@ -258,7 +258,7 @@ describe("kubectl_rollout command", () => {
       }
       
       return response;
-    }, 5, 3000);
+    }, 3, 1500); // Optimized from 5 retries with 3000ms delay
   });
 
   test("kubectl_rollout can pause and resume a deployment", async () => {
@@ -419,13 +419,13 @@ describe("kubectl_rollout command error handling", () => {
     );
 
     await client.connect(transport);
-    await sleep(2000);
+    await sleep(1000);
   });
 
   afterEach(async () => {
     try {
       await transport.close();
-      await sleep(2000);
+      await sleep(1000);
     } catch (e) {
       console.error("Error during cleanup:", e);
     }

@@ -99,14 +99,14 @@ export async function kubectlRollout(
         // and capture the output until that point
         const result = execSync(command, { 
           encoding: "utf8",
-          timeout: 30000 // 30 second timeout for watch operations
+          timeout: 15000 // Reduced from 30 seconds to 15 seconds
         });
         
         return {
           content: [
             {
               type: "text",
-              text: result + "\n\nNote: Watch operation was limited to 30 seconds. The rollout may still be in progress.",
+              text: result + "\n\nNote: Watch operation was limited to 15 seconds. The rollout may still be in progress.",
             },
           ],
         };
