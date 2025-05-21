@@ -175,6 +175,25 @@ For Claude Desktop configuration with non-destructive mode:
 }
 ```
 
+### Commands Available in Non-Destructive Mode
+
+All read-only and resource creation/update operations remain available:
+
+- Resource Information: `kubectl_get`, `kubectl_describe`, `kubectl_list`, `kubectl_logs`, `explain_resource`, `list_api_resources`
+- Resource Creation/Modification: `kubectl_apply`, `kubectl_create`, `kubectl_scale`, `kubectl_patch`, `kubectl_rollout`
+- Helm Operations: `install_helm_chart`, `upgrade_helm_chart`
+- Connectivity: `port_forward`, `stop_port_forward`
+- Context Management: `kubectl_context`
+- General: `kubectl_generic` (limited to non-destructive commands)
+
+### Commands Disabled in Non-Destructive Mode
+
+The following destructive operations are disabled:
+
+- `kubectl_delete`: Deleting any Kubernetes resources
+- `uninstall_helm_chart`: Uninstalling Helm charts
+- `cleanup`: Cleanup of managed resources
+
 For additional advanced features, see the [ADVANCED_README.md](ADVANCED_README.md).
 
 ## Architecture
@@ -190,19 +209,34 @@ The sequence diagram below illustrates how requests flow through the system:
 ```mermaid
 sequenceDiagram
     participant Client
-    participant Transport as StdioTransport
+    participant Transport as Transport Layer
     participant Server as MCP Server
+    participant Filter as Tool Filter
     participant Handler as Request Handler
     participant K8sManager as KubernetesManager
     participant K8s as Kubernetes API
 
-    Client->>Transport: Send Request via STDIO
+    Note over Transport: StdioTransport or<br>SSE Transport
+
+    Client->>Transport: Send Request
     Transport->>Server: Forward Request
 
     alt Tools Request
-        Server->>Handler: Route to tools handler
-        Handler->>K8sManager: Execute kubectl operation
-        K8sManager->>K8s: Make API call
+        Server->>Filter: Filter available tools
+        Note over Filter: Remove destructive tools<br>if in non-destructive mode
+        Filter->>Handler: Route to tools handler
+
+        alt kubectl operations
+            Handler->>K8sManager: Execute kubectl operation
+            K8sManager->>K8s: Make API call
+        else Helm operations
+            Handler->>K8sManager: Execute Helm operation
+            K8sManager->>K8s: Make API call
+        else Port Forward operations
+            Handler->>K8sManager: Set up port forwarding
+            K8sManager->>K8s: Make API call
+        end
+
         K8s-->>K8sManager: Return result
         K8sManager-->>Handler: Process response
         Handler-->>Server: Return tool result
@@ -219,6 +253,8 @@ sequenceDiagram
     Transport-->>Client: Return Final Response
 ```
 
+See this [DeepWiki link](https://deepwiki.com/Flux159/mcp-server-kubernetes) for a more indepth architecture overview created by Devin.
+
 ## Publishing new release
 
 Go to the [releases page](https://github.com/Flux159/mcp-server-kubernetes/releases), click on "Draft New Release", click "Choose a tag" and create a new tag by typing out a new version number using "v{major}.{minor}.{patch}" semver format. Then, write a release title "Release v{major}.{minor}.{patch}" and description / changelog if necessary and click "Publish Release".
@@ -227,4 +263,4 @@ This will create a new tag which will trigger a new release build via the cd.yml
 
 ## Not planned
 
-Authentication / adding clusters to kubectx.
+Adding clusters to kubectx.
