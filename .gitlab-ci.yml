@@ -1,0 +1,56 @@
+stages:
+  - build
+  - dockerdeploy
+
+variables:
+  DOCKER_IMAGE_REGISTRY: ernpallregistry.azurecr.io
+  DOCKER_IMAGE_REPOSITORY: flujo
+  DOCKER_IMAGE_TAG: ${CI_COMMIT_REF_NAME}
+  DOCKER_IMAGE_TAG_SHA: ${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHORT_SHA}
+  DOCKER_IMAGE: ${DOCKER_IMAGE_REGISTRY}/${DOCKER_IMAGE_REPOSITORY}:${DOCKER_IMAGE_TAG}
+  DOCKER_IMAGE_SHA: ${DOCKER_IMAGE_REGISTRY}/${DOCKER_IMAGE_REPOSITORY}:${DOCKER_IMAGE_TAG_SHA}
+
+docker-build:
+  stage: build
+  script:
+    - chmod u+x ./build.sh
+    - ./build.sh ${DOCKER_IMAGE}
+    - docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE_SHA}
+    - echo "Tagged docker image to ${DOCKER_IMAGE_SHA}"
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "develop"'
+      changes:
+        - ./**/*.sh
+        - ./Dockerfile
+        - ./**/*.tsx
+        - ./**/*.ts
+        - ./**/*.js
+        - ./**/*.html
+        - ./**/*.mjs
+        - ./**/*.json
+  tags:
+    - build-srv-02
+
+docker-push:
+  stage: dockerdeploy
+  dependencies:
+    - docker-build
+  script:
+    - az login --identity
+    - az acr login --name ernpallregistry
+    - docker push ${DOCKER_IMAGE}
+    - docker push ${DOCKER_IMAGE_SHA}
+    - echo "Docker images ${DOCKER_IMAGE} and ${DOCKER_IMAGE_SHA} pushed to ACR"
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "develop"'
+      changes:
+        - ./**/*.sh
+        - ./Dockerfile
+        - ./**/*.tsx
+        - ./**/*.ts
+        - ./**/*.js
+        - ./**/*.html
+        - ./**/*.mjs
+        - ./**/*.json
+  tags:
+    - build-srv-02
