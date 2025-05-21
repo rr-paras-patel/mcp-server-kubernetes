@@ -184,7 +184,6 @@ All read-only and resource creation/update operations remain available:
 - Helm Operations: `install_helm_chart`, `upgrade_helm_chart`
 - Connectivity: `port_forward`, `stop_port_forward`
 - Context Management: `kubectl_context`
-- General: `kubectl_generic` (limited to non-destructive commands)
 
 ### Commands Disabled in Non-Destructive Mode
 
@@ -193,6 +192,7 @@ The following destructive operations are disabled:
 - `kubectl_delete`: Deleting any Kubernetes resources
 - `uninstall_helm_chart`: Uninstalling Helm charts
 - `cleanup`: Cleanup of managed resources
+- `kubectl_generic`: General kubectl command access (may include destructive operations)
 
 For additional advanced features, see the [ADVANCED_README.md](ADVANCED_README.md).
 
