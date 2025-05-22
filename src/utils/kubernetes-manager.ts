@@ -14,10 +14,8 @@ export class KubernetesManager {
   constructor() {
     this.kc = new k8s.KubeConfig();
     if (this.isRunningInCluster()) {
-      console.log("Running inside a Kubernetes cluster");
       this.kc.loadFromCluster();
     } else {
-      console.log("Loading default kube config file");
       this.kc.loadFromDefault();
     }
     this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
