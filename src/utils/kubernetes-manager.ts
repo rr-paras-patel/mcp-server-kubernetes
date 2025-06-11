@@ -275,16 +275,16 @@ export class KubernetesManager {
   async deleteResource(kind: string, name: string, namespace: string) {
     switch (kind.toLowerCase()) {
       case "pod":
-        await this.k8sApi.deleteNamespacedPod(name, namespace);
+        await this.k8sApi.deleteNamespacedPod({ name, namespace });
         break;
       case "deployment":
-        await this.k8sAppsApi.deleteNamespacedDeployment(name, namespace);
+        await this.k8sAppsApi.deleteNamespacedDeployment({ name, namespace });
         break;
       case "service":
-        await this.k8sApi.deleteNamespacedService(name, namespace);
+        await this.k8sApi.deleteNamespacedService({ name, namespace });
         break;
       case "cronjob":
-        await this.k8sBatchApi.deleteNamespacedCronJob(name, namespace);
+        await this.k8sBatchApi.deleteNamespacedCronJob({ name, namespace });
         break;
     }
     this.resources = this.resources.filter(
