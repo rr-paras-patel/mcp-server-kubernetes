@@ -47,7 +47,7 @@ export const kubectlRolloutSchema = {
         default: false
       }
     },
-    required: ["subCommand", "resourceType", "name"]
+    required: ["subCommand", "resourceType", "name", "revision", "toRevision", "timeout"]
   }
 };
 
