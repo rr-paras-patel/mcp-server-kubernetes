@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS base
+FROM node:24.2.0-slim AS base
 WORKDIR /usr/local/app
 COPY package.json .
 
@@ -14,7 +14,12 @@ RUN chmod 644 /etc/apt/sources.list.d/kubernetes.list
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
 RUN apt-get update
-RUN apt-get install -y kubectl google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin awscli
+RUN apt-get install -y kubectl google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin awscli net-tools iputils-ping
+
+# Install sudo and add appuser to the sudo group
+RUN apt-get install -y sudo
+RUN useradd -m appuser && echo "appuser ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/appuser && chmod 440 /etc/sudoers.d/appuser
+RUN chown -R appuser /usr/local/app
 
 # Build the typescript code
 FROM base AS dependencies
@@ -25,7 +30,6 @@ RUN npm run build
 
 # Create the final production-ready image
 FROM base AS release
-RUN useradd -m appuser && chown -R appuser /usr/local/app
 ENV NODE_ENV=production
 RUN npm install --only=production
 COPY --from=dependencies /usr/local/app/dist ./dist
