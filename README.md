@@ -83,6 +83,12 @@ npx mcp-chat --config "%APPDATA%\Claude\claude_desktop_config.json"
   - Update field(s) of a resource with `kubectl_patch`
   - Manage deployment rollouts with `kubectl_rollout`
   - Execute any kubectl command with `kubectl_generic`
+- [x] Advanced operations
+  - Scale deployments with `kubectl_scale` (replaces legacy `scale_deployment`)
+  - Port forward to pods and services with `port_forward`
+  - Run Helm operations
+    - Install, upgrade, and uninstall charts
+    - Support for custom values, repositories, and versions
 - [x] Troubleshooting Prompt (`k8s-troubleshoot`)
   - Guides through a systematic Kubernetes troubleshooting flow for pods based on a keyword and optional namespace.
 - [x] Non-destructive mode for read and create/update-only access to clusters
