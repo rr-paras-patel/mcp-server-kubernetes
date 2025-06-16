@@ -51,7 +51,7 @@ export const kubectlGetSchema = {
           "Sort events by a field (default: lastTimestamp). Only applicable for events."
       },
     },
-    required: ["resourceType", "labelSelector", "fieldSelector", "sortBy"],
+    required: ["resourceType", "name", "namespace"],
   },
 } as const;
 

@@ -51,7 +51,7 @@ export const kubectlDeleteSchema = {
         description: "Period of time in seconds given to the resource to terminate gracefully"
       }
     },
-    required: ["labelSelector", "manifest", "filename", "gracePeriodSeconds"],
+    required: ["resourceType", "name", "namespace"],
   },
 } as const;
 

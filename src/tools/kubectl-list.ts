@@ -38,7 +38,7 @@ export const kubectlListSchema = {
         description: "Filter resources by field selector (e.g. 'metadata.name=my-pod')"
       }
     },
-    required: ["resourceType", "labelSelector", "fieldSelector"],
+    required: ["resourceType", "namespace"],
   },
 } as const;
 

@@ -45,7 +45,7 @@ export const kubectlGenericSchema = {
         description: "Additional command arguments"
       }
     },
-    required: ["command", "subCommand", "resourceType", "name", "namespace", "outputFormat", "flags", "args"]
+    required: ["command"]
   }
 };
 
