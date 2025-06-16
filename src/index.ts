@@ -59,6 +59,7 @@ import {
   kubectlRollout,
   kubectlRolloutSchema,
 } from "./tools/kubectl-rollout.js";
+import { registerPromptHandlers } from "./prompts/index.js";
 
 // Check if non-destructive tools only mode is enabled
 const nonDestructiveTools =
@@ -116,7 +117,13 @@ const server = new Server(
     name: serverConfig.name,
     version: serverConfig.version,
   },
-  serverConfig
+  {
+    ...serverConfig,
+    capabilities: {
+      prompts: {},
+      ...serverConfig.capabilities,
+    },
+  }
 );
 
 // Resources handlers
@@ -129,6 +136,9 @@ server.setRequestHandler(
   ReadResourceRequestSchema,
   resourceHandlers.readResource
 );
+
+// Register prompt handlers
+registerPromptHandlers(server, k8sManager);
 
 // Tools handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => {
