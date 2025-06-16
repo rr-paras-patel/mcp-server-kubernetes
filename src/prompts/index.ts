@@ -23,6 +23,7 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
               name: "namespace",
               description: "Optional: Specify a namespace to narrow down the search.",
               required: false,
+              default: "all"
             },
           ],
         },
