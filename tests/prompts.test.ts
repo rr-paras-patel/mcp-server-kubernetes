@@ -62,7 +62,7 @@ asResponseSchema(ListPromptsResultSchema)
       arguments: [
         {
           name: "keyword",
-          description: "A keyword to search for in pod names and namespaces.",
+          description: "A keyword to search for in pod OR node names.",
           required: true,
         },
         {

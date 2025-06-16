@@ -16,7 +16,7 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
           arguments: [
             {
               name: "keyword",
-              description: "A keyword to search for in pod names and namespaces.",
+              description: "A keyword to search for in pod OR node names.",
               required: true,
             },
             {
@@ -44,59 +44,60 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
       }
 
       const actualNamespace = namespace || "monitoring";
-      const message = `Troubleshooting for pod contains keyword "${keyword}" in pod name and namespace "${actualNamespace}" applied to all pods or resource types for this investigation:
+      const message = `Troubleshooting for resources (pods, nodes, etc.) containing keyword "${keyword}" in their names within namespace "${actualNamespace}" (or across all namespaces if specified) for this investigation:
 
 **Autonomous Kubernetes Troubleshooting Flow**
 
 0. **Perform Quick Health Checks / Golden Signals Analysis**
    - Assess latency, errors, and resource utilization. If a clear issue is identified (e.g., node not ready, network partition), streamline or deprioritize subsequent detailed steps.
 
-1. **Identify Resource Type and Scope**  
-   Determine if the resource type by analyzing labels and controller relationships.
+1. **Identify Resource Type and Scope**
+   - Determine the specific resource type (e.g., Pod, Node, Deployment, Service) by analyzing labels, controller relationships, and initial observations.
 
-2. **Assess Current State**  
-   - Check if the desired number of replicas matches the ready replicas.  
-   - Identify any pods in non-running states (e.g., CrashLoopBackOff, Pending, Evicted).  
-   - Review node placement and distribution patterns.
+2. **Assess Current State**
+   - Check resource status (e.g., ready state, desired vs. current replicas for deployments).
+   - Identify any non-running or unhealthy states (e.g., CrashLoopBackOff, NotReady, Pending, Evicted).
+   - Review placement and distribution patterns across nodes.
 
-3. **Analyze Operational History**  
-   - Review recent events and warnings related to the resource.  
-   - Check rollout history and update strategies.  
-   - Examine recent configuration changes.
+3. **Analyze Operational History**
+   - Review recent events and warnings related to the resource.
+   - Check rollout history and update strategies for controllers (e.g., Deployments).
+   - Examine recent configuration changes or applied manifests.
 
-4. **Inspect Runtime Behavior**  
-   - Collect logs from current and previous container instances for errors or anomalies.  
-   - Test intra-cluster networking and DNS resolution.  
-   - Verify storage mounts and secret accessibility.
+4. **Inspect Runtime Behavior**
+   - Collect logs from current and previous instances for errors or anomalies (e.g., container logs for pods, system logs for nodes).
+   - Test intra-cluster networking and DNS resolution.
+   - Verify storage mounts, secret accessibility, and configuration usage.
 
-5. **Evaluate Dependencies**  
-   - Validate references to ConfigMaps and Secrets.  
-   - Check service account permissions.  
-   - Confirm initContainers have completed successfully.
+5. **Evaluate Dependencies**
+   - Validate references to ConfigMaps, Secrets, and other dependent resources.
+   - Check associated service account permissions and RBAC rules.
+   - Confirm initContainers and sidecar containers have completed successfully or are running as expected.
 
-6. **Audit Resource Constraints**  
-   - Analyze CPU and memory usage trends.  
-   - Check node allocatable resources.  
-   - Review pod disruption budgets and quotas.
+6. **Audit Resource Constraints**
+   - Analyze CPU, memory, and storage usage trends against defined requests and limits.
+   - Check node allocatable resources and capacity.
+   - Review pod disruption budgets and quotas affecting the resource.
 
-7. **Validate Cluster Context & Environment**  
-   - Inspect node readiness and taints.  
-   - Verify the current Kubernetes context and namespace.  
-   - Confirm API server availability.  
+7. **Validate Cluster Context & Environment**
+   - Inspect node readiness, taints, and tolerations.
+   - Verify the current Kubernetes context and namespace.
+   - Confirm API server availability and connectivity.
    - Check Kubernetes version compatibility (if applicable).
 
-8. **Compare Against Patterns**  
-   - Benchmark against workload-specific best practices.  
-   - Verify liveness and readiness probe configurations.  
-   - Audit security context settings.
+8. **Compare Against Patterns**
+   - Benchmark against workload-specific best practices and known healthy configurations.
+   - Verify liveness, readiness, and startup probe configurations.
+   - Audit security context settings and network policies.
 
 ---
 
 **Instructions:**
-- For each finding, clearly state the observation, its severity (e.g., \`CRITICAL\`, \`WARNING\`, \`INFO\`), and the evidence (e.g., \`kubectl output\`, error message in POD_NAME, timestamp). Also, print which object they found symptomps, e.g., error message in POD_NAME.
-- if there more than 4 pods then you can pick 3 pod which is having high level problem symptomps
+- For each finding, clearly state the observation, its severity (e.g., \`CRITICAL\`, \`WARNING\`, \`INFO\`), and the evidence (e.g., \`kubectl output\`, error message in POD_NAME, timestamp). Also, print which object they found symptoms, e.g., error message in POD_NAME.
+- If there are more than 4 relevant resources (e.g., pods, nodes), pick up to 3 resources which are exhibiting the most severe or illustrative symptoms.
 - If there's a typo in user input and a closest matching object name exists, consider an auto-correction or suggest the correct name.
-- Summarize the root cause clearly and concisely at the end of the investigation, along with clear, actionable steps for remediation, including specific \`kubectl\` commands or configuration changes required.`;
+- Summarize the root cause clearly and concisely at the end of the investigation, along with clear, actionable steps for remediation, including specific \`kubectl\` commands or configuration changes required.
+- **Keep the output crisp, to the point, professional, direct, and systematic, avoiding verbose descriptions. Focus on actionable insights for engineers.**`;
 
       return {
         messages: [
