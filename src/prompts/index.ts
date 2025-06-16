@@ -97,6 +97,7 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
 - If there are more than 4 relevant resources (e.g., pods, nodes), pick up to 3 resources which are exhibiting the most severe or illustrative symptoms.
 - If there's a typo in user input and a closest matching object name exists, consider an auto-correction or suggest the correct name.
 - Summarize the root cause clearly and concisely at the end of the investigation, along with clear, actionable steps for remediation, including specific \`kubectl\` commands or configuration changes required.
+- If there is a node-level issue, thoroughly analyze it and explicitly post the findings.
 - **Keep the output crisp, to the point, professional, direct, and systematic, avoiding verbose descriptions. Focus on actionable insights for engineers.**`;
 
       return {
