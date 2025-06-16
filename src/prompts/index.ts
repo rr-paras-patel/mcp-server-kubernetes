@@ -12,11 +12,11 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
       prompts: [
         {
           name: "k8s-troubleshoot",
-          description: "Troubleshoot Kubernetes resources based on a keyword.",
+          description: "Troubleshoot Kubernetes Resources.",
           arguments: [
             {
               name: "keyword",
-              description: "A keyword to search for in pod OR node names.",
+              description: "A keyword to search pod/node names.",
               required: true,
             },
             {
@@ -52,7 +52,7 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
    - Assess latency, errors, and resource utilization. If a clear issue is identified (e.g., node not ready, network partition), streamline or deprioritize subsequent detailed steps.
 
 1. **Identify Resource Type and Scope**
-   - Determine the specific resource type (e.g., Pod, Node, Deployment, Service) by analyzing labels, controller relationships, and initial observations.
+   - Determine the specific resource type (e.g., Pod, Node, Deployment, Service, Ingress, etc.) by analyzing labels, controller relationships, and initial observations.
 
 2. **Assess Current State**
    - Check resource status (e.g., ready state, desired vs. current replicas for deployments).

@@ -58,11 +58,11 @@ asResponseSchema(ListPromptsResultSchema)
     expect(promptsList.prompts.length).toBeGreaterThan(0);
     expect(promptsList.prompts).toContainEqual({
       name: "k8s-troubleshoot",
-      description: "Troubleshoot Kubernetes resources based on a keyword.",
+      description: "Troubleshoot Kubernetes Resources.",
       arguments: [
         {
           name: "keyword",
-          description: "A keyword to search for in pod OR node names.",
+          description: "A keyword to search pod/node names.",
           required: true,
         },
         {
