@@ -371,6 +371,38 @@ function handleCommandError(error: any, resourceDescription: string) {
     };
   }
   
+  // Check for multi-container pod error
+  if (error.message.includes("a container name must be specified")) {
+    // Extract pod name and available containers from error message
+    const podNameMatch = error.message.match(/for pod ([^,]+)/);
+    const containersMatch = error.message.match(/choose one of: \[([^\]]+)\]/);
+    const initContainersMatch = error.message.match(/or one of the init containers: \[([^\]]+)\]/);
+    
+    const podName = podNameMatch ? podNameMatch[1] : 'unknown';
+    const containers = containersMatch ? containersMatch[1].split(' ').map((c: string) => c.trim()) : [];
+    const initContainers = initContainersMatch ? initContainersMatch[1].split(' ').map((c: string) => c.trim()) : [];
+    
+    // Generate structured context for the MCP client to make decisions
+    const context = {
+      error: "Multi-container pod requires container specification",
+      status: "multi_container_error",
+      pod_name: podName,
+      available_containers: containers,
+      init_containers: initContainers,
+      suggestion: `Please specify a container name using the 'container' parameter. Available containers: ${containers.join(', ')}${initContainers.length > 0 ? `. Init containers: ${initContainers.join(', ')}` : ''}`
+    };
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(context, null, 2),
+        },
+      ],
+      isError: true,
+    };
+  }
+  
   return {
     content: [
       {
@@ -378,6 +410,8 @@ function handleCommandError(error: any, resourceDescription: string) {
         text: JSON.stringify(
           {
             error: `Failed to get logs for ${resourceDescription}: ${error.message}`,
+            status: "general_error",
+            original_error: error.message
           },
           null,
           2
