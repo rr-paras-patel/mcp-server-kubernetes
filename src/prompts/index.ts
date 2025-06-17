@@ -52,7 +52,9 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
    - Assess latency, errors, and resource utilization. If a clear issue is identified (e.g., node not ready, network partition), streamline or deprioritize subsequent detailed steps.
 
 1. **Identify Resource Type and Scope**
-   - Determine the specific resource type (e.g., Pod, Node, Deployment, Service, Ingress, etc.) by analyzing labels, controller relationships, and initial observations.
+   - Determine the specific resource type (e.g., Pod, Node, Deployment, Service, Customresourcedefination) by analyzing labels, controller relationships, and initial observations.
+   - If needed we can use kubectl_explain tool to get list of resource type
+   - Note when you need customresourcedefinitions please use kubectl_explain
 
 2. **Assess Current State**
    - Check resource status (e.g., ready state, desired vs. current replicas for deployments).
