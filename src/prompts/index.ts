@@ -43,7 +43,7 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
         throw new Error("Keyword parameter is required for k8s-troubleshoot prompt");
       }
 
-      const actualNamespace = namespace || "monitoring";
+      const actualNamespace = namespace || "all";
       const message = `Troubleshooting for resources (pods, nodes, etc.) containing keyword "${keyword}" in their names within namespace "${actualNamespace}" (or across all namespaces if specified) for this investigation:
 
 **Autonomous Kubernetes Troubleshooting Flow**
