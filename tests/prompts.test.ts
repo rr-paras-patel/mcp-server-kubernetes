@@ -30,7 +30,6 @@ describe("kubernetes prompts", () => {
         }
       );
       await client.connect(transport);
-      await client.waitForReady(); // Wait for readiness instead of fixed delay
     } catch (e) {
       console.error("Error in beforeEach:", e);
       throw e;
@@ -52,7 +51,7 @@ describe("kubernetes prompts", () => {
       {
         method: "prompts/list",
       },
-asResponseSchema(ListPromptsResultSchema)
+      ListPromptsResultSchema
     );
     expect(promptsList.prompts).toBeDefined();
     expect(promptsList.prompts.length).toBeGreaterThan(0);
