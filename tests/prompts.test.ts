@@ -30,7 +30,7 @@ describe("kubernetes prompts", () => {
         }
       );
       await client.connect(transport);
-      await sleep(1000);
+      await client.waitForReady(); // Wait for readiness instead of fixed delay
     } catch (e) {
       console.error("Error in beforeEach:", e);
       throw e;
