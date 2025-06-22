@@ -1,6 +1,5 @@
 import { describe, test, expect, vi } from "vitest";
-import { execInPodSchema, execInPod } from "../src/tools/exec_in_pod.js";
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import { execInPodSchema } from "../src/tools/exec_in_pod.js";
 
 describe("exec_in_pod tool", () => {
   // Test the schema definition
