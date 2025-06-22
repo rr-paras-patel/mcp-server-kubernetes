@@ -45,7 +45,6 @@ import {
   kubectlDescribe,
   kubectlDescribeSchema,
 } from "./tools/kubectl-describe.js";
-import { kubectlList, kubectlListSchema } from "./tools/kubectl-list.js";
 import { kubectlApply, kubectlApplySchema } from "./tools/kubectl-apply.js";
 import { kubectlDelete, kubectlDeleteSchema } from "./tools/kubectl-delete.js";
 import { kubectlCreate, kubectlCreateSchema } from "./tools/kubectl-create.js";
@@ -81,7 +80,6 @@ const allTools = [
   // Unified kubectl-style tools - these replace many specific tools
   kubectlGetSchema,
   kubectlDescribeSchema,
-  kubectlListSchema,
   kubectlApplySchema,
   kubectlDeleteSchema,
   kubectlCreateSchema,
@@ -189,6 +187,7 @@ server.setRequestHandler(
             allNamespaces?: boolean;
             labelSelector?: string;
             fieldSelector?: string;
+            sortBy?: string;
           }
         );
       }
@@ -201,20 +200,6 @@ server.setRequestHandler(
             name: string;
             namespace?: string;
             allNamespaces?: boolean;
-          }
-        );
-      }
-
-      if (name === "kubectl_list") {
-        return await kubectlList(
-          k8sManager,
-          input as {
-            resourceType: string;
-            namespace?: string;
-            output?: string;
-            allNamespaces?: boolean;
-            labelSelector?: string;
-            fieldSelector?: string;
           }
         );
       }
@@ -464,6 +449,7 @@ server.setRequestHandler(
             }
           );
         }
+
         default:
           throw new McpError(ErrorCode.InvalidRequest, `Unknown tool: ${name}`);
       }
