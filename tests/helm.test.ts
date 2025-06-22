@@ -425,9 +425,9 @@ describe("helm operations", () => {
     // Verify the deployment is gone
     const finalDeploymentResult = await client.request(
       {
-        method: "kubectl_get",
+        method: "tools/call",
         params: {
-          name: "deployments",
+          name: "kubectl_get",
           arguments: {
             resourceType: "deployments",
             namespace: testNamespace,

@@ -456,7 +456,7 @@ metadata:
     }
   });
 
-  // Test kubectl_list command
+  // Test kubectl_get command
   test("kubectl_get lists deployments", async () => {
     // Use kubectl_get to get deployments in the kube-system namespace
     const result = await retry(async () => {
