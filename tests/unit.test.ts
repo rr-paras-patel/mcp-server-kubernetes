@@ -57,8 +57,8 @@ describe("kubernetes server operations", () => {
   beforeEach(async () => {
     try {
       transport = new StdioClientTransport({
-        command: "node",
-        args: ["dist/index.js"],
+        command: "bun",
+        args: ["run", "src/index.ts"],
         stderr: "pipe",
         stdout: "pipe",
         log: (...args) => console.log("SERVER LOG:", ...args),
