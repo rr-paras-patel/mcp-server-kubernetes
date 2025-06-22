@@ -713,8 +713,9 @@ describe("test kubernetes service", () => {
 
     // Verify service is deleted
     let serviceDeleted = false;
+    let getAfterDeleteResponse: any;
     try {
-      await client.request(
+      getAfterDeleteResponse = await client.request(
         {
           method: "tools/call",
           params: {
@@ -729,11 +730,18 @@ describe("test kubernetes service", () => {
         },
         asResponseSchema(KubectlResponseSchema)
       );
+      
+      // If we get here, check if the response indicates the service doesn't exist
+      const responseText = getAfterDeleteResponse.content[0].text;
+      if (responseText.includes("not found") || responseText.includes("NotFound")) {
+        serviceDeleted = true;
+      }
     } catch (e: any) {
       serviceDeleted = true;
       expect(e.message).toContain("not found");
     }
 
+    // If neither exception nor "not found" response, the test should fail
     expect(serviceDeleted).toBe(true);
   }, 35000); // 35 second timeout
 
