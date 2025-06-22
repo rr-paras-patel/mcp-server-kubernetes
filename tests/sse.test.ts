@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { KubernetesManager } from "../src/utils/kubernetes-manager.js";
-import { kubectlListSchema, kubectlList } from "../src/tools/kubectl-list.js";
+import { kubectlGetSchema, kubectlGet } from "../src/tools/kubectl-get.js";
 import express from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import net from "net";
@@ -75,7 +75,7 @@ describe("SSE transport", () => {
   beforeAll(async () => {
     const k8sManager = new KubernetesManager();
 
-    // Create a minimal server with just the kubectl_list tool
+    // Create a minimal server with just the kubectl_get tool
     server = new Server(
       {
         name: "test-server",
@@ -91,7 +91,7 @@ describe("SSE transport", () => {
     // Set up the kubectl_list tool
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
-        tools: [kubectlListSchema],
+        tools: [kubectlGetSchema],
       };
     });
 
@@ -99,14 +99,16 @@ describe("SSE transport", () => {
       const { name, arguments: input = {} } = request.params;
 
       switch (name) {
-        case "kubectl_list":
-          return await kubectlList(k8sManager, input as { 
+        case "kubectl_get":
+          return await kubectlGet(k8sManager, input as {
             resourceType: string;
+            name?: string;
             namespace?: string;
             output?: string;
             allNamespaces?: boolean;
             labelSelector?: string;
             fieldSelector?: string;
+            sortBy?: string;
           });
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -180,7 +182,7 @@ describe("SSE transport", () => {
           id: 1234,
           method: "tools/call",
           params: {
-            name: "kubectl_list",
+            name: "kubectl_get",
             arguments: {
               resourceType: "pods",
               namespace: "default",

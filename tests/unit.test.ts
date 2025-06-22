@@ -115,13 +115,13 @@ describe("kubernetes server operations", () => {
    * Tests both namespace and node listing operations in sequence
    */
   test("list namespaces and nodes", async () => {
-    // List namespaces using kubectl_list
+    // List namespaces using kubectl_get
     console.log("Listing namespaces...");
     const namespacesResult = await client.request(
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "namespaces",
             output: "json"
@@ -135,13 +135,13 @@ describe("kubernetes server operations", () => {
     expect(namespaces.items).toBeDefined();
     expect(Array.isArray(namespaces.items)).toBe(true);
 
-    // List nodes using kubectl_list
+    // List nodes using kubectl_get
     console.log("Listing nodes...");
     const listNodesResult = await client.request(
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "nodes",
             output: "json"
@@ -251,15 +251,15 @@ describe("kubernetes server operations", () => {
         {
           method: "tools/call",
           params: {
-            name: "kubectl_list",
+            name: "kubectl_get",
             arguments: {
               resourceType: "pods",
-              namespace: "default",
-              output: "json"
+              labelSelector: `test=${podBaseName}`,
+              output: "json",
             },
           },
         },
-        asResponseSchema(ListPodsResponseSchema)
+        asResponseSchema(KubectlResponseSchema)
       );
 
       const podsResponse = JSON.parse(existingPods.content[0].text);
