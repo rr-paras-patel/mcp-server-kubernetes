@@ -480,8 +480,10 @@ metadata:
 
     expect(result.content[0].type).toBe("text");
     const deployments = JSON.parse(result.content[0].text);
+    expect(deployments.items).toBeDefined();
     expect(Array.isArray(deployments.items)).toBe(true);
     expect(deployments.items.length).toBeGreaterThan(0);
+    expect(deployments.items[0]).toBeDefined();
     expect(deployments.items[0].name).toBeDefined();
   });
 
@@ -507,8 +509,10 @@ metadata:
 
     expect(result.content[0].type).toBe("text");
     const nodes = JSON.parse(result.content[0].text);
+    expect(nodes.items).toBeDefined();
     expect(Array.isArray(nodes.items)).toBe(true);
     expect(nodes.items.length).toBeGreaterThan(0);
+    expect(nodes.items[0]).toBeDefined();
     expect(nodes.items[0].name).toBeDefined();
   });
 
@@ -564,7 +568,13 @@ metadata:
     expect(namespaces.items).toBeDefined();
     expect(Array.isArray(namespaces.items)).toBe(true);
     expect(namespaces.items.length).toBeGreaterThan(0);
+    // Explicitly check for the first item's existence before accessing its properties
+    expect(namespaces.items[0]).toBeDefined();
     expect(namespaces.items[0].name).toBeDefined();
+
+    // Verify common namespaces are present
+    expect(namespaces.items.some((ns: any) => ns.name === "default")).toBe(true);
+    expect(namespaces.items.some((ns: any) => ns.name === "kube-system")).toBe(true);
   });
 
   // Test kubectl_delete command with label selector
