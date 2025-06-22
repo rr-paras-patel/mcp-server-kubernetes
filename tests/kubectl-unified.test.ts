@@ -482,7 +482,7 @@ metadata:
     const deployments = JSON.parse(result.content[0].text);
     expect(Array.isArray(deployments.items)).toBe(true);
     expect(deployments.items.length).toBeGreaterThan(0);
-    expect(deployments.items[0].metadata.name).toBeDefined();
+    expect(deployments.items[0].name).toBeDefined();
   });
 
   test("kubectl_get lists nodes", async () => {
@@ -509,7 +509,7 @@ metadata:
     const nodes = JSON.parse(result.content[0].text);
     expect(Array.isArray(nodes.items)).toBe(true);
     expect(nodes.items.length).toBeGreaterThan(0);
-    expect(nodes.items[0].metadata.name).toBeDefined();
+    expect(nodes.items[0].name).toBeDefined();
   });
 
   test("kubectl_get lists events in default namespace", async () => {
@@ -561,9 +561,10 @@ metadata:
 
     expect(result.content[0].type).toBe("text");
     const namespaces = JSON.parse(result.content[0].text);
+    expect(namespaces.items).toBeDefined();
     expect(Array.isArray(namespaces.items)).toBe(true);
     expect(namespaces.items.length).toBeGreaterThan(0);
-    expect(namespaces.items[0].metadata.name).toBeDefined();
+    expect(namespaces.items[0].name).toBeDefined();
   });
 
   // Test kubectl_delete command with label selector
