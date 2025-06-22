@@ -41,6 +41,25 @@ import {
   kubectlContextSchema,
 } from "./tools/kubectl-context.js";
 import { kubectlGet, kubectlGetSchema } from "./tools/kubectl-get.js";
+import {
+  kubectlDescribe,
+  kubectlDescribeSchema,
+} from "./tools/kubectl-describe.js";
+import { kubectlList, kubectlListSchema } from "./tools/kubectl-list.js";
+import { kubectlApply, kubectlApplySchema } from "./tools/kubectl-apply.js";
+import { kubectlDelete, kubectlDeleteSchema } from "./tools/kubectl-delete.js";
+import { kubectlCreate, kubectlCreateSchema } from "./tools/kubectl-create.js";
+import { kubectlLogs, kubectlLogsSchema } from "./tools/kubectl-logs.js";
+import {
+  kubectlGeneric,
+  kubectlGenericSchema,
+} from "./tools/kubectl-generic.js";
+import { kubectlPatch, kubectlPatchSchema } from "./tools/kubectl-patch.js";
+import {
+  kubectlRollout,
+  kubectlRolloutSchema,
+} from "./tools/kubectl-rollout.js";
+import { registerPromptHandlers } from "./prompts/index.js";
 
 // Check if non-destructive tools only mode is enabled
 const nonDestructiveTools =
