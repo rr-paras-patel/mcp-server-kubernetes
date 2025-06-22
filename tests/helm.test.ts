@@ -25,7 +25,7 @@ async function waitForClusterReadiness(
         {
           method: "tools/call",
           params: {
-            name: "kubectl_list",
+            name: "kubectl_get",
             arguments: {
               resourceType: "namespaces",
               output: "json"
@@ -40,7 +40,7 @@ async function waitForClusterReadiness(
         {
           method: "tools/call",
           params: {
-            name: "kubectl_list",
+            name: "kubectl_get",
             arguments: {
               resourceType: "services",
               namespace: namespace,
@@ -242,7 +242,7 @@ describe("helm operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "deployments",
             namespace: testNamespace,
@@ -307,7 +307,7 @@ describe("helm operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "deployments",
             namespace: testNamespace,
@@ -367,7 +367,7 @@ describe("helm operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "deployments",
             namespace: testNamespace,
@@ -425,9 +425,9 @@ describe("helm operations", () => {
     // Verify the deployment is gone
     const finalDeploymentResult = await client.request(
       {
-        method: "tools/call",
+        method: "kubectl_get",
         params: {
-          name: "kubectl_list",
+          name: "deployments",
           arguments: {
             resourceType: "deployments",
             namespace: testNamespace,
