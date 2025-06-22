@@ -1,9 +1,6 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { KubernetesManager } from "../types.js";
 import { ListPromptsRequestSchema, GetPromptRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { kubectlList } from "../tools/kubectl-list.js";
-import { kubectlDescribe } from "../tools/kubectl-describe.js";
-import { kubectlLogs } from "../tools/kubectl-logs.js";
 
 export function registerPromptHandlers(server: Server, k8sManager: KubernetesManager) {
   // Register prompts list handler
