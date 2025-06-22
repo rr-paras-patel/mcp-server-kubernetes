@@ -455,6 +455,10 @@ server.setRequestHandler(
 
         case "exec_in_pod": {
           return await execInPod(
+            k8sManager,
+            input as {
+              name: string;
+              namespace?: string;
               command: string | string[];
               container?: string;
             }
