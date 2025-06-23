@@ -56,8 +56,8 @@ describe("kubernetes prompts", () => {
     expect(promptsList.prompts).toBeDefined();
     expect(promptsList.prompts.length).toBeGreaterThan(0);
     expect(promptsList.prompts).toContainEqual({
-      name: "k8s-troubleshoot",
-      description: "Troubleshoot Kubernetes Resources.",
+      name: "k8s-diagnose",
+      description: "Diagnose Kubernetes Resources.",
       arguments: [
         {
           name: "keyword",
