@@ -456,36 +456,125 @@ metadata:
     }
   });
 
-  // Test kubectl_list command
-  test("kubectl_list lists deployments", async () => {
-    // Use kubectl_list to get deployments in the kube-system namespace
-    const listResult = await client.request(
-      {
-        method: "tools/call",
-        params: {
-          name: "kubectl_list",
-          arguments: {
-            resourceType: "deployments",
-            namespace: "kube-system"
+  // Test kubectl_get command
+  test("kubectl_get lists deployments", async () => {
+    // Use kubectl_get to get deployments in the kube-system namespace
+    const result = await retry(async () => {
+      const response = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "kubectl_get",
+            arguments: {
+              resourceType: "deployments",
+              namespace: "kube-system",
+              output: "json",
+            },
           },
         },
-      },
-      // @ts-ignore - Ignoring type error for now to get tests running
-      z.any()
-    ) as KubectlResponse;
-    
-    expect(listResult.content[0].type).toBe("text");
-    
-    // Verify the list output
-    const listOutput = listResult.content[0].text;
-    console.log("List output excerpt:", listOutput.substring(0, 300) + "...");
-    
-    // Check for typically available deployments in kube-system namespace
-    // Common deployments include coredns, kube-proxy, metrics-server, etc.
-    // This test should pass even if the specific deployments vary
-    expect(listOutput).toContain("kube-system");
-    expect(listOutput).toContain("NAME");
-    expect(listOutput).toContain("READY");
+        // @ts-ignore - Ignoring type error for now to get tests running
+        z.any()
+      ) as KubectlResponse;
+      return response;
+    });
+
+    expect(result.content[0].type).toBe("text");
+    const deployments = JSON.parse(result.content[0].text);
+    expect(deployments.items).toBeDefined();
+    expect(Array.isArray(deployments.items)).toBe(true);
+    expect(deployments.items.length).toBeGreaterThan(0);
+    expect(deployments.items[0]).toBeDefined();
+    expect(deployments.items[0].name).toBeDefined();
+  });
+
+  test("kubectl_get lists nodes", async () => {
+    // Use kubectl_get to get nodes
+    const result = await retry(async () => {
+      const response = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "kubectl_get",
+            arguments: {
+              resourceType: "nodes",
+              output: "json",
+            },
+          },
+        },
+        // @ts-ignore - Ignoring type error for now to get tests running
+        z.any()
+      ) as KubectlResponse;
+      return response;
+    });
+
+    expect(result.content[0].type).toBe("text");
+    const nodes = JSON.parse(result.content[0].text);
+    expect(nodes.items).toBeDefined();
+    expect(Array.isArray(nodes.items)).toBe(true);
+    expect(nodes.items.length).toBeGreaterThan(0);
+    expect(nodes.items[0]).toBeDefined();
+    expect(nodes.items[0].name).toBeDefined();
+  });
+
+  test("kubectl_get lists events in default namespace", async () => {
+    // Use kubectl_get to get events in default namespace
+    const result = await retry(async () => {
+      const response = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "kubectl_get",
+            arguments: {
+              resourceType: "events",
+              namespace: "default",
+              output: "json",
+            },
+          },
+        },
+        // @ts-ignore - Ignoring type error for now to get tests running
+        z.any()
+      ) as KubectlResponse;
+      return response;
+    });
+
+    expect(result.content[0].type).toBe("text");
+    const events = JSON.parse(result.content[0].text);
+    expect(Array.isArray(events.events)).toBe(true);
+  });
+
+  test("kubectl_get lists all namespaces", async () => {
+    // Use kubectl_get to get all namespaces
+    const result = await retry(async () => {
+      const response = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "kubectl_get",
+            arguments: {
+              resourceType: "namespaces",
+              allNamespaces: true,
+              output: "json",
+            },
+          },
+        },
+        // @ts-ignore - Ignoring type error for now to get tests running
+        z.any()
+      ) as KubectlResponse;
+      return response;
+    });
+
+    expect(result.content[0].type).toBe("text");
+    const namespaces = JSON.parse(result.content[0].text);
+    expect(namespaces.items).toBeDefined();
+    expect(Array.isArray(namespaces.items)).toBe(true);
+    expect(namespaces.items.length).toBeGreaterThan(0);
+    // Explicitly check for the first item's existence before accessing its properties
+    expect(namespaces.items[0]).toBeDefined();
+    expect(namespaces.items[0].name).toBeDefined();
+
+    // Verify common namespaces are present
+    expect(namespaces.items.some((ns: any) => ns.name === "default")).toBe(true);
+    expect(namespaces.items.some((ns: any) => ns.name === "kube-system")).toBe(true);
   });
 
   // Test kubectl_delete command with label selector

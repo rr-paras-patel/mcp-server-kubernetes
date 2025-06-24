@@ -1,9 +1,6 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { KubernetesManager } from "../types.js";
 import { ListPromptsRequestSchema, GetPromptRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { kubectlList } from "../tools/kubectl-list.js";
-import { kubectlDescribe } from "../tools/kubectl-describe.js";
-import { kubectlLogs } from "../tools/kubectl-logs.js";
 
 export function registerPromptHandlers(server: Server, k8sManager: KubernetesManager) {
   // Register prompts list handler
@@ -11,8 +8,8 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
     return {
       prompts: [
         {
-          name: "k8s-troubleshoot",
-          description: "Troubleshoot Kubernetes Resources.",
+          name: "k8s-diagnose",
+          description: "Diagnose Kubernetes Resources.",
           arguments: [
             {
               name: "keyword",
@@ -35,18 +32,18 @@ export function registerPromptHandlers(server: Server, k8sManager: KubernetesMan
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    if (name === "k8s-troubleshoot") {
+    if (name === "k8s-diagnose") {
       const keyword = args?.keyword as string;
       const namespace = args?.namespace as string;
 
       if (!keyword) {
-        throw new Error("Keyword parameter is required for k8s-troubleshoot prompt");
+        throw new Error("Keyword parameter is required for k8s-diagnose prompt");
       }
 
       const actualNamespace = namespace || "all";
-      const message = `Troubleshooting for resources (pods, nodes, etc.) containing keyword "${keyword}" in their names within namespace "${actualNamespace}" (or across all namespaces if specified) for this investigation:
+      const message = `Diagnose Kubernetes resources (pods, nodes, etc.) containing keyword "${keyword}" in their names within namespace "${actualNamespace}" (or across all namespaces if specified) for this investigation:
 
-**Autonomous Kubernetes Troubleshooting Flow**
+**Autonomous Kubernetes Diagnosis Flow**
 
 0. **Perform Quick Health Checks / Golden Signals Analysis**
    - Assess latency, errors, and resource utilization. If a clear issue is identified (e.g., node not ready, network partition), streamline or deprioritize subsequent detailed steps.

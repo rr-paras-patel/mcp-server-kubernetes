@@ -127,12 +127,12 @@ describe("kubernetes cronjob operations with kubectl commands", () => {
    * Test case: Verify CronJob listing functionality
    */
   test("list cronjobs in namespace", async () => {
-    // List CronJobs using kubectl_list
+    // List CronJobs using kubectl_get
     const listResult = await client.request(
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "cronjobs",
             namespace: testNamespace,
@@ -308,7 +308,7 @@ spec:
         {
           method: "tools/call",
           params: {
-            name: "kubectl_list",
+            name: "kubectl_get",
             arguments: {
               resourceType: "jobs",
               namespace: testNamespace,
