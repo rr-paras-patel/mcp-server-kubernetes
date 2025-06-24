@@ -15,6 +15,7 @@ import {
   listApiResources,
   listApiResourcesSchema,
 } from "./tools/kubectl-operations.js";
+import { execInPod, execInPodSchema } from "./tools/exec_in_pod.js";
 import { getResourceHandlers } from "./resources/handlers.js";
 import {
   ListResourcesRequestSchema,
@@ -44,7 +45,6 @@ import {
   kubectlDescribe,
   kubectlDescribeSchema,
 } from "./tools/kubectl-describe.js";
-import { kubectlList, kubectlListSchema } from "./tools/kubectl-list.js";
 import { kubectlApply, kubectlApplySchema } from "./tools/kubectl-apply.js";
 import { kubectlDelete, kubectlDeleteSchema } from "./tools/kubectl-delete.js";
 import { kubectlCreate, kubectlCreateSchema } from "./tools/kubectl-create.js";
@@ -81,7 +81,6 @@ const allTools = [
   // Unified kubectl-style tools - these replace many specific tools
   kubectlGetSchema,
   kubectlDescribeSchema,
-  kubectlListSchema,
   kubectlApplySchema,
   kubectlDeleteSchema,
   kubectlCreateSchema,
@@ -104,10 +103,11 @@ const allTools = [
   // Port forwarding
   PortForwardSchema,
   StopPortForwardSchema,
+  execInPodSchema,
+
 
   // API resource operations
   listApiResourcesSchema,
-
   // Generic kubectl command
   kubectlGenericSchema,
 
@@ -190,6 +190,7 @@ server.setRequestHandler(
             allNamespaces?: boolean;
             labelSelector?: string;
             fieldSelector?: string;
+            sortBy?: string;
           }
         );
       }
@@ -202,20 +203,6 @@ server.setRequestHandler(
             name: string;
             namespace?: string;
             allNamespaces?: boolean;
-          }
-        );
-      }
-
-      if (name === "kubectl_list") {
-        return await kubectlList(
-          k8sManager,
-          input as {
-            resourceType: string;
-            namespace?: string;
-            output?: string;
-            allNamespaces?: boolean;
-            labelSelector?: string;
-            fieldSelector?: string;
           }
         );
       }
@@ -456,6 +443,18 @@ server.setRequestHandler(
 
         case "ping": {
           return await ping();
+        }
+
+        case "exec_in_pod": {
+          return await execInPod(
+            k8sManager,
+            input as {
+              name: string;
+              namespace?: string;
+              command: string | string[];
+              container?: string;
+            }
+          );
         }
 
         default:

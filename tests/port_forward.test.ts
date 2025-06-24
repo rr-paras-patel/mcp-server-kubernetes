@@ -116,7 +116,7 @@ describe("kubectl operations", () => {
       {
         method: "tools/call",
         params: {
-          name: "kubectl_list",
+          name: "kubectl_get",
           arguments: {
             resourceType: "pods",
             namespace: testNamespace,

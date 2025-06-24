@@ -200,7 +200,83 @@ Complete Example
 Assuming your image name is flux159/mcp-server-kubernetes and you need to map ports and set environment parameters, you can run:
 
 ```shell
-docker  run --rm -it -p 3001:3001 -e ENABLE_UNSAFE_SSE_TRANSPORT=1  -e PORT=3001   -v ~/.kube/config:/home/appuser/.kube/config   flux159/mcp-server-kubernetes
+docker  run --rm -it -p 3001:3001 -e ENABLE_UNSAFE_SSE_TRANSPORT=1  -e PORT=3001   -v ~/.kube/config:/home/appuser/.kube/config   flux159/mcp-server-kubernetes:latest
+```
+
+## Advance Docker Usage
+
+### Connect to AWS EKS Cluster
+
+```json
+{
+  "mcpServers": {
+    "kubernetes": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "~/.kube:/home/appuser/.kube:ro",
+        "-v",
+        "~/.aws:/home/appuser/.aws:ro",
+        "-e",
+        "AWS_PROFILE=default",
+        "-e",
+        "AWS_REGION=us-west-2",
+        "flux159/mcp-server-kubernetes:latest"
+      ]
+    }
+  }
+}
+```
+
+### Connect to Google GKE Clusters
+
+```json
+{
+  "mcpServers": {
+    "kubernetes": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "~/.kube:/home/appuser/.kube:ro",
+        "-v",
+        "~/.config/gcloud:/home/appuser/.config/gcloud:ro",
+        "-e",
+        "CLOUDSDK_CORE_PROJECT=my-gcp-project",
+        "-e",
+        "CLOUDSDK_COMPUTE_REGION=us-central1",
+        "flux159/mcp-server-kubernetes:latest"
+      ]
+    }
+  }
+}
+```
+
+### Connect to Azure AKS Clusters
+
+```json
+{
+  "mcpServers": {
+    "kubernetes": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "~/.kube:/home/appuser/.kube:ro",
+        "-e",
+        "AZURE_SUBSCRIPTION=my-subscription-id",
+        "flux159/mcp-server-kubernetes:latest"
+      ]
+    }
+  }
+}
 ```
 
 ⚠️ Key safety considerations
