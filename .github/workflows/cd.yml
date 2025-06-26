@@ -98,6 +98,15 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Build dxt
+        run: |
+          bun run builddxt
+
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} mcp-server-kubernetes.dxt --clobber
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
