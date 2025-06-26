@@ -1,7 +1,7 @@
 {
   "dxt_version": "0.1",
   "name": "mcp-server-kubernetes",
-  "version": "2.4.1",
+  "version": "2.4.3",
   "description": "MCP server for interacting with Kubernetes clusters via kubectl",
   "author": {
     "name": "Flux159",
