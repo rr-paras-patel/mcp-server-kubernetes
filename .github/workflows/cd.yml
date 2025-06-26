@@ -106,7 +106,7 @@ jobs:
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ steps.version.outputs.current-version }} mcp-server-kubernetes.dxt --clobber
+        run: gh release upload v${{ steps.version.outputs.current-version }} mcp-server-kubernetes.dxt --clobber
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -126,4 +126,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: flux159/${{ github.event.repository.name }}:latest,flux159/${{ github.event.repository.name }}:${{ steps.version.outputs.current-version }}
+          tags: flux159/${{ github.event.repository.name }}:latest,flux159/${{ github.event.repository.name }}:v${{ steps.version.outputs.current-version }}
