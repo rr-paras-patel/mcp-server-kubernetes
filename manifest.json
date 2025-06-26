@@ -1,0 +1,32 @@
+{
+  "dxt_version": "0.1",
+  "name": "mcp-server-kubernetes",
+  "version": "2.4.1",
+  "description": "MCP server for interacting with Kubernetes clusters via kubectl",
+  "author": {
+    "name": "Flux159",
+    "url": "https://github.com/Flux159/"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {}
+    }
+  },
+  "tools": [
+    {
+      "name": "kubectl_get",
+      "description": "Use kubectl get to retrieve information from cluster"
+    }
+  ],
+  "tools_generated": true,
+  "keywords": ["kubernetes", "docker", "containers", "containerization"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Flux159/mcp-server-kubernetes"
+  }
+}
