@@ -74,10 +74,11 @@ jobs:
           # Make sure we're on main branch
           git checkout main
 
-          # Update the version in package.json and commit the change
+          # Update the version in package.json and manifest.json and commit the change
           jq --arg v "${{ steps.version.outputs.current-version }}" '.version = $v' package.json > temp.json && mv temp.json package.json
+          jq --arg v "${{ steps.version.outputs.current-version }}" '.version = $v' manifest.json > temp.json && mv temp.json manifest.json
 
-          git add package.json
+          git add package.json manifest.json
           git commit -m "Bump version to ${{ steps.version.outputs.current-version }}"
 
           # Create and push the tag
@@ -105,7 +106,7 @@ jobs:
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} mcp-server-kubernetes.dxt --clobber
+        run: gh release upload ${{ steps.version.outputs.current-version }} mcp-server-kubernetes.dxt --clobber
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
