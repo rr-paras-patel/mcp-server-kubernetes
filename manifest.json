@@ -13,12 +13,7 @@
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/dist/index.js"
-      ],
-      "env": {
-        "KUBECONFIG": "${user_config.kubeconfig_path}"
-      }
+      "args": ["${__dirname}/dist/index.js"]
     }
   },
   "tools": [
@@ -28,12 +23,7 @@
     }
   ],
   "tools_generated": true,
-  "keywords": [
-    "kubernetes",
-    "docker",
-    "containers",
-    "containerization"
-  ],
+  "keywords": ["kubernetes", "docker", "containers", "containerization"],
   "license": "MIT",
   "repository": {
     "type": "git",
