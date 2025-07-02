@@ -3,6 +3,7 @@ import {
   ExplainResourceParams,
   ListApiResourcesParams,
 } from "../models/kubectl-models.js";
+import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const explainResourceSchema = {
   name: "explain_resource",
@@ -70,6 +71,7 @@ const executeKubectlCommand = (command: string, args: string[]): string => {
   try {
     return execFileSync(command, args, {
       encoding: "utf8",
+      maxBuffer: getSpawnMaxBuffer(),
       env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
     });
   } catch (error: any) {

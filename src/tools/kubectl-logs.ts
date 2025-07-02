@@ -1,6 +1,7 @@
 import { KubernetesManager } from "../types.js";
 import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const kubectlLogsSchema = {
   name: "kubectl_logs",
@@ -103,6 +104,7 @@ export async function kubectlLogs(
       try {
         const result = execFileSync(command, args, {
           encoding: "utf8",
+          maxBuffer: getSpawnMaxBuffer(),
           env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
         });
         return formatLogOutput(name, result);
@@ -144,6 +146,7 @@ export async function kubectlLogs(
         try {
           const jobs = execFileSync(command, jobsArgs, {
             encoding: "utf8",
+            maxBuffer: getSpawnMaxBuffer(),
             env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
           })
             .trim()
@@ -209,6 +212,7 @@ export async function kubectlLogs(
           }
           const selectorJson = execFileSync(command, selectorArgs, {
             encoding: "utf8",
+            maxBuffer: getSpawnMaxBuffer(),
             env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
           }).trim();
           const selector = JSON.parse(selectorJson.replace(/'/g, '"'));
@@ -308,6 +312,7 @@ async function getLabelSelectorLogs(
     ];
     const pods = execFileSync(command, podsArgs, {
       encoding: "utf8",
+      maxBuffer: getSpawnMaxBuffer(),
       env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
     })
       .trim()
@@ -350,6 +355,7 @@ async function getLabelSelectorLogs(
       try {
         const logs = execFileSync(command, podArgs, {
           encoding: "utf8",
+          maxBuffer: getSpawnMaxBuffer(),
           env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
         });
         logsMap[pod] = logs;

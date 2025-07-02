@@ -4,6 +4,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const kubectlPatchSchema = {
   name: "kubectl_patch",
@@ -115,6 +116,7 @@ export async function kubectlPatch(
     try {
       const result = execFileSync(command, args, {
         encoding: "utf8",
+        maxBuffer: getSpawnMaxBuffer(),
         env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
       });
 

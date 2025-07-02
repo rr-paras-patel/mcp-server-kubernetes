@@ -1,6 +1,7 @@
 import { KubernetesManager } from "../types.js";
 import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const kubectlRolloutSchema = {
   name: "kubectl_rollout",
@@ -104,6 +105,7 @@ export async function kubectlRollout(
         // and capture the output until that point
         const result = execFileSync(command, args, {
           encoding: "utf8",
+          maxBuffer: getSpawnMaxBuffer(),
           timeout: 15000, // Reduced from 30 seconds to 15 seconds
           env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
         });
@@ -121,6 +123,7 @@ export async function kubectlRollout(
       } else {
         const result = execFileSync(command, args, {
           encoding: "utf8",
+          maxBuffer: getSpawnMaxBuffer(),
           env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
         });
 

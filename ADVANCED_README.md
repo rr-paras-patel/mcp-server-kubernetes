@@ -1,5 +1,23 @@
 # Advanced README for mcp-server-kubernetes
 
+## Large clusters
+
+If you have large clusters or see a `spawnSync ENOBFUS` error, you may need to specify the environment argument `SPAWN_MAX_BUFFER` (in bytes) when running the server. See [this issue](https://github.com/Flux159/mcp-server-kubernetes/issues/172) for more information.
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-readonly": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "SPAWN_MAX_BUFFER": "5242880" // 5MB = 1024*1024*5. Default is 1MB in Node.js
+      }
+    }
+  }
+}
+```
+
 ## Authentication Options
 
 The server supports multiple authentication methods with the following priority order:

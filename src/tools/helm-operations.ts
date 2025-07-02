@@ -7,6 +7,7 @@ import {
   HelmResponse,
   HelmUpgradeOperation,
 } from "../models/helm-models.js";
+import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const installHelmChartSchema = {
   name: "install_helm_chart",
@@ -99,6 +100,7 @@ const executeHelmCommand = (command: string, args: string[]): string => {
     return execFileSync(command, args, {
       encoding: "utf8",
       timeout: 60000, // 60 seconds timeout
+      maxBuffer: getSpawnMaxBuffer(),
       env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
     });
   } catch (error: any) {

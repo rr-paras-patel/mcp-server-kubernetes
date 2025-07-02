@@ -1,6 +1,7 @@
 import { KubernetesManager } from "../types.js";
 import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const kubectlContextSchema = {
   name: "kubectl_context",
@@ -72,6 +73,7 @@ export async function kubectlContext(
           // For custom or JSON output, we'll format it ourselves
           const rawResult = execFileSync(command, listArgs, {
             encoding: "utf8",
+            maxBuffer: getSpawnMaxBuffer(),
             env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
           });
 
@@ -111,6 +113,7 @@ export async function kubectlContext(
         // Execute the command for non-json outputs
         result = execFileSync(command, listArgs, {
           encoding: "utf8",
+          maxBuffer: getSpawnMaxBuffer(),
           env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
         });
         break;
@@ -123,6 +126,7 @@ export async function kubectlContext(
         try {
           const currentContext = execFileSync(command, getArgs, {
             encoding: "utf8",
+            maxBuffer: getSpawnMaxBuffer(),
             env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
           }).trim();
 
@@ -133,6 +137,7 @@ export async function kubectlContext(
               ["config", "get-contexts"],
               {
                 encoding: "utf8",
+                maxBuffer: getSpawnMaxBuffer(),
                 env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
               }
             );
@@ -233,6 +238,7 @@ export async function kubectlContext(
             ["config", "get-contexts", "-o", "name"],
             {
               encoding: "utf8",
+              maxBuffer: getSpawnMaxBuffer(),
               env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
             }
           );
@@ -264,6 +270,7 @@ export async function kubectlContext(
           // Execute the command
           result = execFileSync(command, setArgs, {
             encoding: "utf8",
+            maxBuffer: getSpawnMaxBuffer(),
             env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
           });
 
