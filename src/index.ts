@@ -61,9 +61,22 @@ import {
 import { registerPromptHandlers } from "./prompts/index.js";
 import { ping, pingSchema } from "./tools/ping.js";
 
-// Check if non-destructive tools only mode is enabled
+// Check environment variables for tool filtering
+const allowOnlyReadonlyTools = process.env.ALLOW_ONLY_READONLY_TOOLS === "true";
+const allowedToolsEnv = process.env.ALLOWED_TOOLS;
 const nonDestructiveTools =
   process.env.ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS === "true";
+
+// Define readonly tools
+const readonlyTools = [
+  kubectlGetSchema,
+  kubectlDescribeSchema,
+  kubectlLogsSchema,
+  kubectlContextSchema,
+  explainResourceSchema,
+  listApiResourcesSchema,
+  pingSchema,
+];
 
 // Define destructive tools (delete and uninstall operations)
 const destructiveTools = [
@@ -104,7 +117,6 @@ const allTools = [
   PortForwardSchema,
   StopPortForwardSchema,
   execInPodSchema,
-
 
   // API resource operations
   listApiResourcesSchema,
@@ -147,12 +159,21 @@ registerPromptHandlers(server, k8sManager);
 
 // Tools handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  // Filter out destructive tools if ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS is set to 'true'
-  const tools = nonDestructiveTools
-    ? allTools.filter(
-        (tool) => !destructiveTools.some((dt) => dt.name === tool.name)
-      )
-    : allTools;
+  let tools;
+
+  if (allowedToolsEnv) {
+    const allowedToolNames = allowedToolsEnv.split(",").map((t) => t.trim());
+    tools = allTools.filter((tool) => allowedToolNames.includes(tool.name));
+  } else if (allowOnlyReadonlyTools) {
+    tools = readonlyTools;
+  } else if (nonDestructiveTools) {
+    tools = allTools.filter(
+      (tool) => !destructiveTools.some((dt) => dt.name === tool.name)
+    );
+  } else {
+    tools = allTools;
+  }
+
   return { tools };
 });
 
