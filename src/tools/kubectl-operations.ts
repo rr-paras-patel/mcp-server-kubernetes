@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import {
   ExplainResourceParams,
   ListApiResourcesParams,
@@ -66,9 +66,12 @@ export const listApiResourcesSchema = {
   },
 };
 
-const executeKubectlCommand = (command: string): string => {
+const executeKubectlCommand = (command: string, args: string[]): string => {
   try {
-    return execSync(command, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
+    return execFileSync(command, args, {
+      encoding: "utf8",
+      env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+    });
   } catch (error: any) {
     throw new Error(`Kubectl command failed: ${error.message}`);
   }
@@ -78,23 +81,24 @@ export async function explainResource(
   params: ExplainResourceParams
 ): Promise<{ content: { type: string; text: string }[] }> {
   try {
-    let command = "kubectl explain";
+    const command = "kubectl";
+    const args = ["explain"];
 
     if (params.apiVersion) {
-      command += ` --api-version=${params.apiVersion}`;
+      args.push(`--api-version=${params.apiVersion}`);
     }
 
     if (params.recursive) {
-      command += " --recursive";
+      args.push("--recursive");
     }
 
     if (params.output) {
-      command += ` --output=${params.output}`;
+      args.push(`--output=${params.output}`);
     }
 
-    command += ` ${params.resource}`;
+    args.push(params.resource);
 
-    const result = executeKubectlCommand(command);
+    const result = executeKubectlCommand(command, args);
 
     return {
       content: [
@@ -113,25 +117,26 @@ export async function listApiResources(
   params: ListApiResourcesParams
 ): Promise<{ content: { type: string; text: string }[] }> {
   try {
-    let command = "kubectl api-resources";
+    const command = "kubectl";
+    const args = ["api-resources"];
 
     if (params.apiGroup) {
-      command += ` --api-group=${params.apiGroup}`;
+      args.push(`--api-group=${params.apiGroup}`);
     }
 
     if (params.namespaced !== undefined) {
-      command += ` --namespaced=${params.namespaced}`;
+      args.push(`--namespaced=${params.namespaced}`);
     }
 
     if (params.verbs && params.verbs.length > 0) {
-      command += ` --verbs=${params.verbs.join(",")}`;
+      args.push(`--verbs=${params.verbs.join(",")}`);
     }
 
     if (params.output) {
-      command += ` -o ${params.output}`;
+      args.push(`-o`, params.output);
     }
 
-    const result = executeKubectlCommand(command);
+    const result = executeKubectlCommand(command, args);
 
     return {
       content: [

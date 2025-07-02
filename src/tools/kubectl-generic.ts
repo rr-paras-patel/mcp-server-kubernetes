@@ -1,52 +1,54 @@
 import { KubernetesManager } from "../types.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 export const kubectlGenericSchema = {
   name: "kubectl_generic",
-  description: "Execute any kubectl command with the provided arguments and flags",
+  description:
+    "Execute any kubectl command with the provided arguments and flags",
   inputSchema: {
     type: "object",
     properties: {
       command: {
         type: "string",
-        description: "The kubectl command to execute (e.g. patch, rollout, top)"
+        description:
+          "The kubectl command to execute (e.g. patch, rollout, top)",
       },
       subCommand: {
         type: "string",
-        description: "Subcommand if applicable (e.g. 'history' for rollout)"
+        description: "Subcommand if applicable (e.g. 'history' for rollout)",
       },
       resourceType: {
         type: "string",
-        description: "Resource type (e.g. pod, deployment)"
+        description: "Resource type (e.g. pod, deployment)",
       },
       name: {
         type: "string",
-        description: "Resource name"
+        description: "Resource name",
       },
       namespace: {
         type: "string",
         description: "Namespace",
-        default: "default"
+        default: "default",
       },
       outputFormat: {
         type: "string",
         description: "Output format (e.g. json, yaml, wide)",
-        enum: ["json", "yaml", "wide", "name", "custom"]
+        enum: ["json", "yaml", "wide", "name", "custom"],
       },
       flags: {
         type: "object",
         description: "Command flags as key-value pairs",
-        additionalProperties: true
+        additionalProperties: true,
       },
       args: {
         type: "array",
         items: { type: "string" },
-        description: "Additional command arguments"
-      }
+        description: "Additional command arguments",
+      },
     },
-    required: ["command"]
-  }
+    required: ["command"],
+  },
 };
 
 export async function kubectlGeneric(
@@ -64,33 +66,34 @@ export async function kubectlGeneric(
 ) {
   try {
     // Start building the kubectl command
-    let cmdArgs: string[] = ["kubectl", input.command];
-    
+    const command = "kubectl";
+    const cmdArgs: string[] = [input.command];
+
     // Add subcommand if provided
     if (input.subCommand) {
       cmdArgs.push(input.subCommand);
     }
-    
+
     // Add resource type if provided
     if (input.resourceType) {
       cmdArgs.push(input.resourceType);
     }
-    
+
     // Add resource name if provided
     if (input.name) {
       cmdArgs.push(input.name);
     }
-    
+
     // Add namespace if provided
     if (input.namespace) {
       cmdArgs.push(`--namespace=${input.namespace}`);
     }
-    
+
     // Add output format if provided
     if (input.outputFormat) {
       cmdArgs.push(`-o=${input.outputFormat}`);
     }
-    
+
     // Add any provided flags
     if (input.flags) {
       for (const [key, value] of Object.entries(input.flags)) {
@@ -103,18 +106,20 @@ export async function kubectlGeneric(
         }
       }
     }
-    
+
     // Add any additional arguments
     if (input.args && input.args.length > 0) {
       cmdArgs.push(...input.args);
     }
-    
-    // Execute the command (join all args except the first "kubectl" which is used in execSync)
-    const command = cmdArgs.slice(1).join(' ');
+
+    // Execute the command
     try {
-      console.error(`Executing: kubectl ${command}`);
-      const result = execSync(`kubectl ${command}`, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
-      
+      console.error(`Executing: kubectl ${cmdArgs.join(" ")}`);
+      const result = execFileSync(command, cmdArgs, {
+        encoding: "utf8",
+        env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+      });
+
       return {
         content: [
           {
@@ -133,10 +138,10 @@ export async function kubectlGeneric(
     if (error instanceof McpError) {
       throw error;
     }
-    
+
     throw new McpError(
       ErrorCode.InternalError,
       `Failed to execute kubectl command: ${error.message}`
     );
   }
-} 
+}

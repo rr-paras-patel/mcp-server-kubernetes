@@ -1,5 +1,5 @@
 import { KubernetesManager } from "../types.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import * as fs from "fs";
 import * as path from "path";
@@ -11,29 +11,31 @@ export const kubectlApplySchema = {
   inputSchema: {
     type: "object",
     properties: {
-      manifest: { 
-        type: "string", 
-        description: "YAML manifest to apply" 
+      manifest: {
+        type: "string",
+        description: "YAML manifest to apply",
       },
-      filename: { 
-        type: "string", 
-        description: "Path to a YAML file to apply (optional - use either manifest or filename)" 
+      filename: {
+        type: "string",
+        description:
+          "Path to a YAML file to apply (optional - use either manifest or filename)",
       },
-      namespace: { 
-        type: "string", 
-        description: "Namespace to apply the resource to (optional)", 
-        default: "default" 
+      namespace: {
+        type: "string",
+        description: "Namespace to apply the resource to (optional)",
+        default: "default",
       },
       dryRun: {
         type: "boolean",
         description: "If true, only validate the resource, don't apply it",
-        default: false
+        default: false,
       },
       force: {
         type: "boolean",
-        description: "If true, immediately remove resources from API and bypass graceful deletion",
-        default: false
-      }
+        description:
+          "If true, immediately remove resources from API and bypass graceful deletion",
+        default: false,
+      },
     },
     required: [],
   },
@@ -60,38 +62,42 @@ export async function kubectlApply(
     const namespace = input.namespace || "default";
     const dryRun = input.dryRun || false;
     const force = input.force || false;
-    
-    let command = "kubectl apply";
+
+    let command = "kubectl";
+    let args = ["apply"];
     let tempFile: string | null = null;
-    
+
     // Process manifest content if provided
     if (input.manifest) {
       // Create temporary file for the manifest
       const tmpDir = os.tmpdir();
       tempFile = path.join(tmpDir, `manifest-${Date.now()}.yaml`);
       fs.writeFileSync(tempFile, input.manifest);
-      command += ` -f ${tempFile}`;
+      args.push("-f", tempFile);
     } else if (input.filename) {
-      command += ` -f ${input.filename}`;
+      args.push("-f", input.filename);
     }
-    
+
     // Add namespace
-    command += ` -n ${namespace}`;
-    
+    args.push("-n", namespace);
+
     // Add dry-run flag if requested
     if (dryRun) {
-      command += " --dry-run=client";
+      args.push("--dry-run=client");
     }
-    
+
     // Add force flag if requested
     if (force) {
-      command += " --force";
+      args.push("--force");
     }
-    
+
     // Execute the command
     try {
-      const result = execSync(command, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
-      
+      const result = execFileSync(command, args, {
+        encoding: "utf8",
+        env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+      });
+
       // Clean up temp file if created
       if (tempFile) {
         try {
@@ -100,7 +106,7 @@ export async function kubectlApply(
           console.warn(`Failed to delete temporary file ${tempFile}: ${err}`);
         }
       }
-      
+
       return {
         content: [
           {
@@ -118,7 +124,7 @@ export async function kubectlApply(
           console.warn(`Failed to delete temporary file ${tempFile}: ${err}`);
         }
       }
-      
+
       throw new McpError(
         ErrorCode.InternalError,
         `Failed to apply manifest: ${error.message}`
@@ -128,10 +134,10 @@ export async function kubectlApply(
     if (error instanceof McpError) {
       throw error;
     }
-    
+
     throw new McpError(
       ErrorCode.InternalError,
       `Failed to execute kubectl apply command: ${error.message}`
     );
   }
-} 
+}

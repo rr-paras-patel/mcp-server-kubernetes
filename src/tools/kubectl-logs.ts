@@ -1,10 +1,11 @@
 import { KubernetesManager } from "../types.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 export const kubectlLogsSchema = {
   name: "kubectl_logs",
-  description: "Get logs from Kubernetes resources like pods, deployments, or jobs",
+  description:
+    "Get logs from Kubernetes resources like pods, deployments, or jobs",
   inputSchema: {
     type: "object",
     properties: {
@@ -24,19 +25,20 @@ export const kubectlLogsSchema = {
       },
       container: {
         type: "string",
-        description: "Container name (required when pod has multiple containers)"
+        description:
+          "Container name (required when pod has multiple containers)",
       },
       tail: {
         type: "number",
-        description: "Number of lines to show from end of logs"
+        description: "Number of lines to show from end of logs",
       },
       since: {
         type: "string",
-        description: "Show logs since relative time (e.g. '5s', '2m', '3h')"
+        description: "Show logs since relative time (e.g. '5s', '2m', '3h')",
       },
       sinceTime: {
         type: "string",
-        description: "Show logs since absolute time (RFC3339)"
+        description: "Show logs since absolute time (RFC3339)",
       },
       timestamps: {
         type: "boolean",
@@ -55,8 +57,8 @@ export const kubectlLogsSchema = {
       },
       labelSelector: {
         type: "string",
-        description: "Filter resources by label selector"
-      }
+        description: "Filter resources by label selector",
+      },
     },
     required: ["resourceType", "name", "namespace"],
   },
@@ -82,46 +84,72 @@ export async function kubectlLogs(
     const resourceType = input.resourceType.toLowerCase();
     const name = input.name;
     const namespace = input.namespace || "default";
-    
-    // Build the kubectl command base
-    let baseCommand = `kubectl -n ${namespace}`;
-    
+
+    const command = "kubectl";
     // Handle different resource types
     if (resourceType === "pod") {
       // Direct pod logs
-      baseCommand += ` logs ${name}`;
-      
+      let args = ["-n", namespace, "logs", name];
+
       // If container is specified, add it
       if (input.container) {
-        baseCommand += ` -c ${input.container}`;
+        args.push(`-c`, input.container);
       }
-      
+
       // Add options
-      baseCommand = addLogOptions(baseCommand, input);
-      
+      args = addLogOptions(args, input);
+
       // Execute the command
       try {
-        const result = execSync(baseCommand, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
+        const result = execFileSync(command, args, {
+          encoding: "utf8",
+          env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+        });
         return formatLogOutput(name, result);
       } catch (error: any) {
         return handleCommandError(error, `pod ${name}`);
       }
-    } else if (resourceType === "deployment" || resourceType === "job" || resourceType === "cronjob") {
+    } else if (
+      resourceType === "deployment" ||
+      resourceType === "job" ||
+      resourceType === "cronjob"
+    ) {
       // For deployments, jobs and cronjobs we need to find the pods first
-      let selectorCommand;
-      
+      let selectorArgs;
+
       if (resourceType === "deployment") {
-        selectorCommand = `kubectl -n ${namespace} get deployment ${name} -o jsonpath='{.spec.selector.matchLabels}'`;
+        selectorArgs = [
+          "-n",
+          namespace,
+          "get",
+          "deployment",
+          name,
+          "-o",
+          "jsonpath='{.spec.selector.matchLabels}'",
+        ];
       } else if (resourceType === "job") {
         // For jobs, we use the job-name label
         return getLabelSelectorLogs(`job-name=${name}`, namespace, input);
       } else if (resourceType === "cronjob") {
         // For cronjobs, it's more complex - need to find the job first
-        const jobsCommand = `kubectl -n ${namespace} get jobs --selector=job-name=${name} -o jsonpath='{.items[*].metadata.name}'`;
+        const jobsArgs = [
+          "-n",
+          namespace,
+          "get",
+          "jobs",
+          "--selector=job-name=" + name,
+          "-o",
+          "jsonpath='{.items[*].metadata.name}'",
+        ];
         try {
-          const jobs = execSync(jobsCommand, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } }).trim().split(' ');
-          
-          if (jobs.length === 0 || (jobs.length === 1 && jobs[0] === '')) {
+          const jobs = execFileSync(command, jobsArgs, {
+            encoding: "utf8",
+            env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+          })
+            .trim()
+            .split(" ");
+
+          if (jobs.length === 0 || (jobs.length === 1 && jobs[0] === "")) {
             return {
               content: [
                 {
@@ -137,17 +165,21 @@ export async function kubectlLogs(
               ],
             };
           }
-          
+
           // Get logs for all jobs
           const allJobLogs: Record<string, any> = {};
-          
+
           for (const job of jobs) {
             // Get logs for pods from this job
-            const result = await getLabelSelectorLogs(`job-name=${job}`, namespace, input);
+            const result = await getLabelSelectorLogs(
+              `job-name=${job}`,
+              namespace,
+              input
+            );
             const jobLog = JSON.parse(result.content[0].text);
             allJobLogs[job] = jobLog.logs;
           }
-          
+
           return {
             content: [
               {
@@ -168,24 +200,27 @@ export async function kubectlLogs(
           return handleCommandError(error, `cronjob ${name}`);
         }
       }
-      
+
       try {
         if (resourceType === "deployment") {
           // Get the deployment's selector
-          if (!selectorCommand) {
+          if (!selectorArgs) {
             throw new Error("Selector command is undefined");
           }
-          const selectorJson = execSync(selectorCommand, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } }).trim();
+          const selectorJson = execFileSync(command, selectorArgs, {
+            encoding: "utf8",
+            env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+          }).trim();
           const selector = JSON.parse(selectorJson.replace(/'/g, '"'));
-          
+
           // Convert to label selector format
           const labelSelector = Object.entries(selector)
             .map(([key, value]) => `${key}=${value}`)
-            .join(',');
-          
+            .join(",");
+
           return getLabelSelectorLogs(labelSelector, namespace, input);
         }
-        
+
         // For jobs and cronjobs, the logic is handled above
         return {
           content: [
@@ -224,35 +259,33 @@ export async function kubectlLogs(
 }
 
 // Helper function to add log options to the kubectl command
-function addLogOptions(baseCommand: string, input: any): string {
-  let command = baseCommand;
-  
+function addLogOptions(args: string[], input: any): string[] {
   // Add options based on inputs
   if (input.tail !== undefined) {
-    command += ` --tail=${input.tail}`;
+    args.push(`--tail=${input.tail}`);
   }
-  
+
   if (input.since) {
-    command += ` --since=${input.since}`;
+    args.push(`--since=${input.since}`);
   }
-  
+
   if (input.sinceTime) {
-    command += ` --since-time=${input.sinceTime}`;
+    args.push(`--since-time=${input.sinceTime}`);
   }
-  
+
   if (input.timestamps) {
-    command += ` --timestamps`;
+    args.push(`--timestamps`);
   }
-  
+
   if (input.previous) {
-    command += ` --previous`;
+    args.push(`--previous`);
   }
-  
+
   if (input.follow) {
-    command += ` --follow`;
+    args.push(`--follow`);
   }
-  
-  return command;
+
+  return args;
 }
 
 // Helper function to get logs for resources selected by labels
@@ -262,11 +295,25 @@ async function getLabelSelectorLogs(
   input: any
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   try {
+    const command = "kubectl";
     // First, find all pods matching the label selector
-    const podsCommand = `kubectl -n ${namespace} get pods --selector=${labelSelector} -o jsonpath='{.items[*].metadata.name}'`;
-    const pods = execSync(podsCommand, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } }).trim().split(' ');
-    
-    if (pods.length === 0 || (pods.length === 1 && pods[0] === '')) {
+    const podsArgs = [
+      "-n",
+      namespace,
+      "get",
+      "pods",
+      `--selector=${labelSelector}`,
+      "-o",
+      "jsonpath='{.items[*].metadata.name}'",
+    ];
+    const pods = execFileSync(command, podsArgs, {
+      encoding: "utf8",
+      env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+    })
+      .trim()
+      .split(" ");
+
+    if (pods.length === 0 || (pods.length === 1 && pods[0] === "")) {
       return {
         content: [
           {
@@ -282,32 +329,35 @@ async function getLabelSelectorLogs(
         ],
       };
     }
-    
+
     // Get logs for each pod
     const logsMap: Record<string, string> = {};
-    
+
     for (const pod of pods) {
       // Skip empty pod names
       if (!pod) continue;
-      
-      let podCommand = `kubectl -n ${namespace} logs ${pod}`;
-      
+
+      let podArgs = ["-n", namespace, "logs", pod];
+
       // Add container if specified
       if (input.container) {
-        podCommand += ` -c ${input.container}`;
+        podArgs.push(`-c`, input.container);
       }
-      
+
       // Add other options
-      podCommand = addLogOptions(podCommand, input);
-      
+      podArgs = addLogOptions(podArgs, input);
+
       try {
-        const logs = execSync(podCommand, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
+        const logs = execFileSync(command, podArgs, {
+          encoding: "utf8",
+          env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+        });
         logsMap[pod] = logs;
       } catch (error: any) {
         logsMap[pod] = `Error: ${error.message}`;
       }
     }
-    
+
     return {
       content: [
         {
@@ -351,7 +401,7 @@ function formatLogOutput(resourceName: string, logOutput: string) {
 // Helper function to handle command errors
 function handleCommandError(error: any, resourceDescription: string) {
   console.error(`Error getting logs for ${resourceDescription}:`, error);
-  
+
   if (error.status === 404 || error.message.includes("not found")) {
     return {
       content: [
@@ -370,18 +420,24 @@ function handleCommandError(error: any, resourceDescription: string) {
       isError: true,
     };
   }
-  
+
   // Check for multi-container pod error
   if (error.message.includes("a container name must be specified")) {
     // Extract pod name and available containers from error message
     const podNameMatch = error.message.match(/for pod ([^,]+)/);
     const containersMatch = error.message.match(/choose one of: \[([^\]]+)\]/);
-    const initContainersMatch = error.message.match(/or one of the init containers: \[([^\]]+)\]/);
-    
-    const podName = podNameMatch ? podNameMatch[1] : 'unknown';
-    const containers = containersMatch ? containersMatch[1].split(' ').map((c: string) => c.trim()) : [];
-    const initContainers = initContainersMatch ? initContainersMatch[1].split(' ').map((c: string) => c.trim()) : [];
-    
+    const initContainersMatch = error.message.match(
+      /or one of the init containers: \[([^\]]+)\]/
+    );
+
+    const podName = podNameMatch ? podNameMatch[1] : "unknown";
+    const containers = containersMatch
+      ? containersMatch[1].split(" ").map((c: string) => c.trim())
+      : [];
+    const initContainers = initContainersMatch
+      ? initContainersMatch[1].split(" ").map((c: string) => c.trim())
+      : [];
+
     // Generate structured context for the MCP client to make decisions
     const context = {
       error: "Multi-container pod requires container specification",
@@ -389,9 +445,15 @@ function handleCommandError(error: any, resourceDescription: string) {
       pod_name: podName,
       available_containers: containers,
       init_containers: initContainers,
-      suggestion: `Please specify a container name using the 'container' parameter. Available containers: ${containers.join(', ')}${initContainers.length > 0 ? `. Init containers: ${initContainers.join(', ')}` : ''}`
+      suggestion: `Please specify a container name using the 'container' parameter. Available containers: ${containers.join(
+        ", "
+      )}${
+        initContainers.length > 0
+          ? `. Init containers: ${initContainers.join(", ")}`
+          : ""
+      }`,
     };
-    
+
     return {
       content: [
         {
@@ -402,7 +464,7 @@ function handleCommandError(error: any, resourceDescription: string) {
       isError: true,
     };
   }
-  
+
   return {
     content: [
       {
@@ -411,7 +473,7 @@ function handleCommandError(error: any, resourceDescription: string) {
           {
             error: `Failed to get logs for ${resourceDescription}: ${error.message}`,
             status: "general_error",
-            original_error: error.message
+            original_error: error.message,
           },
           null,
           2
@@ -420,4 +482,4 @@ function handleCommandError(error: any, resourceDescription: string) {
     ],
     isError: true,
   };
-} 
+}

@@ -1,5 +1,5 @@
 import { KubernetesManager } from "../types.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 export const kubectlGetSchema = {
@@ -38,17 +38,17 @@ export const kubectlGetSchema = {
       },
       labelSelector: {
         type: "string",
-        description: "Filter resources by label selector (e.g. 'app=nginx')"
+        description: "Filter resources by label selector (e.g. 'app=nginx')",
       },
       fieldSelector: {
         type: "string",
         description:
-          "Filter resources by field selector (e.g. 'metadata.name=my-pod')"
+          "Filter resources by field selector (e.g. 'metadata.name=my-pod')",
       },
       sortBy: {
         type: "string",
         description:
-          "Sort events by a field (default: lastTimestamp). Only applicable for events."
+          "Sort events by a field (default: lastTimestamp). Only applicable for events.",
       },
     },
     required: ["resourceType", "name", "namespace"],
@@ -79,14 +79,12 @@ export async function kubectlGet(
     const sortBy = input.sortBy;
 
     // Build the kubectl command
-    let command = "kubectl get ";
-
-    // Add resource type
-    command += resourceType;
+    const command = "kubectl";
+    const args = ["get", resourceType];
 
     // Add name if provided
     if (name) {
-      command += ` ${name}`;
+      args.push(name);
     }
 
     // For events, default to all namespaces unless explicitly specified
@@ -99,48 +97,54 @@ export async function kubectlGet(
 
     // Add namespace flag unless all namespaces is specified
     if (shouldShowAllNamespaces) {
-      command += " --all-namespaces";
+      args.push("--all-namespaces");
     } else if (namespace && !isNonNamespacedResource(resourceType)) {
-      command += ` -n ${namespace}`;
+      args.push("-n", namespace);
     }
 
     // Add label selector if provided
     if (labelSelector) {
-      command += ` -l ${labelSelector}`;
+      args.push("-l", labelSelector);
     }
 
     // Add field selector if provided
     if (fieldSelector) {
-      command += ` --field-selector=${fieldSelector}`;
+      args.push(`--field-selector=${fieldSelector}`);
     }
 
     // Add sort-by for events
     if (resourceType === "events" && sortBy) {
-      command += ` --sort-by=.${sortBy}`;
+      args.push(`--sort-by=.${sortBy}`);
     } else if (resourceType === "events") {
-      command += ` --sort-by=.lastTimestamp`;
+      args.push(`--sort-by=.lastTimestamp`);
     }
 
     // Add output format
     if (output === "json") {
-      command += " -o json";
+      args.push("-o", "json");
     } else if (output === "yaml") {
-      command += " -o yaml";
+      args.push("-o", "yaml");
     } else if (output === "wide") {
-      command += " -o wide";
+      args.push("-o", "wide");
     } else if (output === "name") {
-      command += " -o name";
+      args.push("-o", "name");
     } else if (output === "custom") {
       if (resourceType === "events") {
-        command += ` -o 'custom-columns=LAST SEEN:.lastTimestamp,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.kind/.involvedObject.name,MESSAGE:.message'`;
+        args.push(
+          "-o",
+          "'custom-columns=LASTSEEN:.lastTimestamp,TYPE:.type,REASON:.reason,OBJECT:.involvedObject.name,MESSAGE:.message'"
+        );
       } else {
-        command += ` -o 'custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,STATUS:.status.phase,AGE:.metadata.creationTimestamp'`;
+        args.push(
+          "-o",
+          "'custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,STATUS:.status.phase,AGE:.metadata.creationTimestamp'"
+        );
       }
     }
 
     // Execute the command
     try {
-      const result = execSync(command, {
+      const result = execFileSync(command, args, {
         encoding: "utf8",
         env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
       });

@@ -1,39 +1,43 @@
 import { KubernetesManager } from "../types.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 export const kubectlContextSchema = {
   name: "kubectl_context",
-  description: "Manage Kubernetes contexts - list, get, or set the current context",
+  description:
+    "Manage Kubernetes contexts - list, get, or set the current context",
   inputSchema: {
     type: "object",
     properties: {
       operation: {
         type: "string",
         enum: ["list", "get", "set"],
-        description: "Operation to perform: list contexts, get current context, or set current context",
-        default: "list"
+        description:
+          "Operation to perform: list contexts, get current context, or set current context",
+        default: "list",
       },
       name: {
         type: "string",
-        description: "Name of the context to set as current (required for set operation)"
+        description:
+          "Name of the context to set as current (required for set operation)",
       },
       showCurrent: {
         type: "boolean",
-        description: "When listing contexts, highlight which one is currently active",
-        default: true
+        description:
+          "When listing contexts, highlight which one is currently active",
+        default: true,
       },
       detailed: {
         type: "boolean",
         description: "Include detailed information about the context",
-        default: false
+        default: false,
       },
       output: {
         type: "string",
         enum: ["json", "yaml", "name", "custom"],
         description: "Output format",
-        default: "json"
-      }
+        default: "json",
+      },
     },
     required: ["operation"],
   },
@@ -53,21 +57,24 @@ export async function kubectlContext(
     const { operation, name, output = "json" } = input;
     const showCurrent = input.showCurrent !== false; // Default to true if not specified
     const detailed = input.detailed === true; // Default to false if not specified
-    
-    let command = "";
+
+    const command = "kubectl";
     let result = "";
-    
+
     switch (operation) {
       case "list":
         // Build command to list contexts
-        command = "kubectl config get-contexts";
-        
+        let listArgs = ["config", "get-contexts"];
+
         if (output === "name") {
-          command += " -o name";
+          listArgs.push("-o", "name");
         } else if (output === "custom" || output === "json") {
           // For custom or JSON output, we'll format it ourselves
-          const rawResult = execSync(command, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
-          
+          const rawResult = execFileSync(command, listArgs, {
+            encoding: "utf8",
+            env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+          });
+
           // Parse the tabular output from kubectl
           const lines = rawResult.trim().split("\n");
           const headers = lines[0].trim().split(/\s+/);
@@ -76,21 +83,21 @@ export async function kubectlContext(
           const clusterIndex = headers.indexOf("CLUSTER");
           const authInfoIndex = headers.indexOf("AUTHINFO");
           const namespaceIndex = headers.indexOf("NAMESPACE");
-          
+
           const contexts = [];
           for (let i = 1; i < lines.length; i++) {
             const columns = lines[i].trim().split(/\s+/);
             const isCurrent = columns[currentIndex]?.trim() === "*";
-            
+
             contexts.push({
               name: columns[nameIndex]?.trim(),
               cluster: columns[clusterIndex]?.trim(),
               user: columns[authInfoIndex]?.trim(),
               namespace: columns[namespaceIndex]?.trim() || "default",
-              isCurrent: isCurrent
+              isCurrent: isCurrent,
             });
           }
-          
+
           return {
             content: [
               {
@@ -100,23 +107,36 @@ export async function kubectlContext(
             ],
           };
         }
-        
+
         // Execute the command for non-json outputs
-        result = execSync(command, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
+        result = execFileSync(command, listArgs, {
+          encoding: "utf8",
+          env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+        });
         break;
-        
+
       case "get":
         // Build command to get current context
-        command = "kubectl config current-context";
-        
+        const getArgs = ["config", "current-context"];
+
         // Execute the command
         try {
-          const currentContext = execSync(command, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } }).trim();
-          
+          const currentContext = execFileSync(command, getArgs, {
+            encoding: "utf8",
+            env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+          }).trim();
+
           if (detailed) {
             // For detailed context info, we need to use get-contexts and filter
-            const allContextsOutput = execSync("kubectl config get-contexts", { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
-            
+            const allContextsOutput = execFileSync(
+              command,
+              ["config", "get-contexts"],
+              {
+                encoding: "utf8",
+                env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+              }
+            );
+
             // Parse the tabular output from kubectl
             const lines = allContextsOutput.trim().split("\n");
             const headers = lines[0].trim().split(/\s+/);
@@ -124,31 +144,31 @@ export async function kubectlContext(
             const clusterIndex = headers.indexOf("CLUSTER");
             const authInfoIndex = headers.indexOf("AUTHINFO");
             const namespaceIndex = headers.indexOf("NAMESPACE");
-            
+
             let contextData = {
               name: currentContext,
               cluster: "",
               user: "",
-              namespace: "default"
+              namespace: "default",
             };
-            
+
             // Find the current context in the output
             for (let i = 1; i < lines.length; i++) {
               const line = lines[i];
               const columns = line.trim().split(/\s+/);
               const name = columns[nameIndex]?.trim();
-              
+
               if (name === currentContext) {
                 contextData = {
                   name: currentContext,
                   cluster: columns[clusterIndex]?.trim() || "",
                   user: columns[authInfoIndex]?.trim() || "",
-                  namespace: columns[namespaceIndex]?.trim() || "default"
+                  namespace: columns[namespaceIndex]?.trim() || "default",
                 };
                 break;
               }
             }
-            
+
             return {
               content: [
                 {
@@ -162,10 +182,10 @@ export async function kubectlContext(
             // In each test, we need to use the format that the specific test expects
             // Test contexts.test.ts line 205 is comparing with kubeConfig.getCurrentContext()
             // which returns the short name, so we'll return that
-            
+
             // Since k8sManager is available, we can check which format to use based on the function called
             // For now, let's always return the short name since that's what the KubeConfig API returns
-            
+
             return {
               content: [
                 {
@@ -182,14 +202,21 @@ export async function kubectlContext(
               content: [
                 {
                   type: "text",
-                  text: JSON.stringify({ currentContext: null, error: "No current context is set" }, null, 2),
+                  text: JSON.stringify(
+                    {
+                      currentContext: null,
+                      error: "No current context is set",
+                    },
+                    null,
+                    2
+                  ),
                 },
               ],
             };
           }
           throw error;
         }
-        
+
       case "set":
         // Validate input
         if (!name) {
@@ -198,12 +225,19 @@ export async function kubectlContext(
             "Name parameter is required for set operation"
           );
         }
-        
+
         // First check if the context exists
         try {
-          const allContextsOutput = execSync("kubectl config get-contexts -o name", { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
+          const allContextsOutput = execFileSync(
+            command,
+            ["config", "get-contexts", "-o", "name"],
+            {
+              encoding: "utf8",
+              env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+            }
+          );
           const availableContexts = allContextsOutput.trim().split("\n");
-          
+
           // Extract the short name from the ARN if needed
           let contextName = name;
           if (name.includes("cluster/")) {
@@ -212,31 +246,41 @@ export async function kubectlContext(
               contextName = parts[1]; // Get the part after "cluster/"
             }
           }
-          
+
           // Check if the context exists
-          if (!availableContexts.includes(contextName) && !availableContexts.includes(name)) {
+          if (
+            !availableContexts.includes(contextName) &&
+            !availableContexts.includes(name)
+          ) {
             throw new McpError(
               ErrorCode.InvalidParams,
               `Context '${name}' not found`
             );
           }
-          
+
           // Build command to set context
-          command = `kubectl config use-context "${contextName}"`;
-          
+          const setArgs = ["config", "use-context", contextName];
+
           // Execute the command
-          result = execSync(command, { encoding: "utf8", env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG } });
-          
+          result = execFileSync(command, setArgs, {
+            encoding: "utf8",
+            env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
+          });
+
           // For tests to pass, we need to return the original name format that was passed in
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  message: `Current context set to '${name}'`,
-                  context: name
-                }, null, 2),
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    message: `Current context set to '${name}'`,
+                    context: name,
+                  },
+                  null,
+                  2
+                ),
               },
             ],
           };
@@ -245,7 +289,7 @@ export async function kubectlContext(
           if (error instanceof McpError) {
             throw error;
           }
-          
+
           // Handle other errors
           if (error.message.includes("no context exists")) {
             throw new McpError(
@@ -255,14 +299,14 @@ export async function kubectlContext(
           }
           throw error;
         }
-        
+
       default:
         throw new McpError(
           ErrorCode.InvalidParams,
           `Invalid operation: ${operation}`
         );
     }
-    
+
     return {
       content: [
         {
@@ -275,10 +319,10 @@ export async function kubectlContext(
     if (error instanceof McpError) {
       throw error;
     }
-    
+
     throw new McpError(
       ErrorCode.InternalError,
       `Failed to execute kubectl context command: ${error.message}`
     );
   }
-} 
+}
