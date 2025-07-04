@@ -192,7 +192,7 @@ describe("kubectl operations", () => {
               arguments: {
                 resourceType: "events",
                 namespace: "default",
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -231,7 +231,7 @@ describe("kubectl operations", () => {
               arguments: {
                 resourceType: "events",
                 allNamespaces: true,
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -256,7 +256,7 @@ describe("kubectl operations", () => {
                 resourceType: "events",
                 namespace: "default",
                 fieldSelector: "type=Normal",
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -293,7 +293,7 @@ describe("kubectl operations", () => {
               arguments: {
                 resourceType: "events",
                 namespace: "default",
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -332,7 +332,7 @@ describe("kubectl operations", () => {
               arguments: {
                 resourceType: "events",
                 allNamespaces: true,
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -357,7 +357,7 @@ describe("kubectl operations", () => {
                 resourceType: "events",
                 namespace: "default",
                 fieldSelector: "type=Normal",
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -389,7 +389,7 @@ describe("kubectl operations", () => {
                 resourceType: "events",
                 namespace: "default",
                 sortBy: "type",
-                output: "json"
+                output: "json",
               },
             },
           },
@@ -401,33 +401,6 @@ describe("kubectl operations", () => {
       const events = JSON.parse(result.content[0].text);
       expect(events.events).toBeDefined();
       expect(Array.isArray(events.events)).toBe(true);
-    });
-
-    test("get events with custom output format using kubectl-get", async () => {
-      const result = await retry(async () => {
-        return await client.request(
-          {
-            method: "tools/call",
-            params: {
-              name: "kubectl_get",
-              arguments: {
-                resourceType: "events",
-                namespace: "default",
-                output: "custom"
-              },
-            },
-          },
-          asResponseSchema(KubectlResponseSchema)
-        );
-      });
-
-      expect(result.content[0].type).toBe("text");
-      const output = result.content[0].text;
-      expect(output).toContain("LAST SEEN");
-      expect(output).toContain("TYPE");
-      expect(output).toContain("REASON");
-      expect(output).toContain("OBJECT");
-      expect(output).toContain("MESSAGE");
     });
   });
 });

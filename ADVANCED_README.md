@@ -1,5 +1,23 @@
 # Advanced README for mcp-server-kubernetes
 
+## Large clusters
+
+If you have large clusters or see a `spawnSync ENOBFUS` error, you may need to specify the environment argument `SPAWN_MAX_BUFFER` (in bytes) when running the server. See [this issue](https://github.com/Flux159/mcp-server-kubernetes/issues/172) for more information.
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-readonly": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "SPAWN_MAX_BUFFER": "5242880" // 5MB = 1024*1024*5. Default is 1MB in Node.js
+      }
+    }
+  }
+}
+```
+
 ## Authentication Options
 
 The server supports multiple authentication methods with the following priority order:
@@ -115,9 +133,75 @@ For Claude Desktop with environment variables:
 }
 ```
 
+### Tool Filtering Modes
+
+The server offers several modes to control which tools are available, configured via environment variables. The modes are prioritized as follows:
+
+1.  `ALLOWED_TOOLS`
+2.  `ALLOW_ONLY_READONLY_TOOLS`
+3.  `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS`
+
+#### Allowed Tools List
+
+You can specify a comma-separated list of tool names to enable only those specific tools. This provides fine-grained control over the server's capabilities.
+
+```shell
+ALLOWED_TOOLS="kubectl_get,kubectl_describe" npx mcp-server-kubernetes
+```
+
+In your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-custom": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "ALLOWED_TOOLS": "kubectl_get,kubectl_describe,kubectl_logs"
+      }
+    }
+  }
+}
+```
+
+#### Read-Only Mode
+
+For the strictest level of safety, you can enable read-only mode. This mode only permits tools that cannot alter the cluster state.
+
+```shell
+ALLOW_ONLY_READONLY_TOOLS=true npx mcp-server-kubernetes
+```
+
+The following tools are available in read-only mode:
+
+- `kubectl_get`
+- `kubectl_describe`
+- `kubectl_logs`
+- `kubectl_context`
+- `explain_resource`
+- `list_api_resources`
+- `ping`
+
+In your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-readonly-strict": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "ALLOW_ONLY_READONLY_TOOLS": "true"
+      }
+    }
+  }
+}
+```
+
 ### Non-Destructive Mode
 
-You can run the server in a non-destructive mode that disables all destructive operations (delete pods, delete deployments, delete namespaces, etc.) by setting the `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` environment variable to `true`:
+If neither of the above modes are active, you can run the server in a non-destructive mode that disables all destructive operations (delete pods, delete deployments, delete namespaces, etc.) by setting the `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` environment variable to `true`:
 
 ```shell
 ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS=true npx mcp-server-kubernetes
