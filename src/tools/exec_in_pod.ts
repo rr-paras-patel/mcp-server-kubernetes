@@ -42,17 +42,14 @@ export const execInPodSchema = {
       container: {
         type: "string",
         description: "Container name (required when pod has multiple containers)",
-        optional: true,
       },
       shell: {
         type: "string",
         description: "Shell to use for command execution (e.g. '/bin/sh', '/bin/bash'). If not provided, will use command as-is.",
-        optional: true,
       },
       timeout: {
         type: "number",
         description: "Timeout for command - 60000 milliseconds if not specified",
-        optional: true,
       },
     },
     required: ["name", "command"],
