@@ -15,8 +15,7 @@ MCP Server that can connect to a Kubernetes cluster and manage it. Supports load
 
 https://github.com/user-attachments/assets/f25f8f4e-4d04-479b-9ae0-5dac452dd2ed
 
-<a href="https://glama.ai/mcp/servers/w71ieamqrt"><img width="380" height="200" src="https://glama.ai/mcp/servers/w71ieamqrt/badge" /></a>
-
+<a href="https://glama.ai/mcp/servers/w71ieamqrt"><img width="380" height="200" src="https://glama.ai/mcp/servers/w71ieamqrt/badge" /></a> 
 ## Usage with Claude Desktop
 
 ```json
@@ -278,3 +277,21 @@ This will create a new tag which will trigger a new release build via the cd.yml
 ## Not planned
 
 Adding clusters to kubectx.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Flux159/mcp-server-kubernetes&type=Date)](https://www.star-history.com/#Flux159/mcp-server-kubernetes&Date)
+
+
+## 🖊️ Cite
+If you find this repo useful, please cite:
+```
+@software{Patel_MCP_Server_Kubernetes_2024,
+author = {Patel, Paras and Sonwalkar, Suyog},
+month = jul,
+title = {{MCP Server Kubernetes}},
+url = {https://github.com/Flux159/mcp-server-kubernetes},
+version = {2.5.0},
+year = {2024}
+}
+```
