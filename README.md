@@ -278,3 +278,22 @@ This will create a new tag which will trigger a new release build via the cd.yml
 ## Not planned
 
 Adding clusters to kubectx.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Flux159/mcp-server-kubernetes&type=Date)](https://www.star-history.com/#Flux159/mcp-server-kubernetes&Date)
+
+## 🖊️ Cite
+
+If you find this repo useful, please cite:
+
+```
+@software{Patel_MCP_Server_Kubernetes_2024,
+author = {Patel, Paras and Sonwalkar, Suyog},
+month = jul,
+title = {{MCP Server Kubernetes}},
+url = {https://github.com/Flux159/mcp-server-kubernetes},
+version = {2.5.0},
+year = {2024}
+}
+```
