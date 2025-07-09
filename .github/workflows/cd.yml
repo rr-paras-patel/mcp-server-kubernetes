@@ -74,7 +74,7 @@ jobs:
           # Make sure we're on main branch
           git checkout main
 
-                    # Update the version in all files using the npm script
+          # Update the version in all files using the npm script
           npm run version:update ${{ steps.version.outputs.current-version }}
 
           git add package.json manifest.json CITATION.cff README.md
