@@ -287,6 +287,26 @@ Assuming your image name is flux159/mcp-server-kubernetes and you need to map po
 docker  run --rm -it -p 3001:3001 -e ENABLE_UNSAFE_SSE_TRANSPORT=1  -e PORT=3001   -v ~/.kube/config:/home/appuser/.kube/config   flux159/mcp-server-kubernetes:latest
 ```
 
+⚠️ Key safety considerations
+When deploying SSE mode using Docker, due to the insecure SSE transport protocol and sensitive configuration file mounting, you should consider using a proxy to handle authentication & authorization to the MCP server.
+
+mcp config
+
+```shell
+{
+  "mcpServers": {
+    "mcp-server-kubernetes": {
+      "url": "http://localhost:3001/sse",
+      "args": []
+    }
+  }
+}
+```
+
+### Why is SSE Transport Unsafe?
+
+SSE transport exposes an http endpoint that can be accessed by anyone with the URL. This can be a security risk if the server is not properly secured. It is recommended to use a secure proxy server to proxy to the SSE endpoint. In addition, anyone with access to the URL will be able to utilize the authentication of your kubeconfig to make requests to your Kubernetes cluster. You should add logging to your proxy in order to monitor user requests to the SSE endpoint.
+
 ## Advance Docker Usage
 
 ### Connect to AWS EKS Cluster
@@ -362,23 +382,3 @@ docker  run --rm -it -p 3001:3001 -e ENABLE_UNSAFE_SSE_TRANSPORT=1  -e PORT=3001
   }
 }
 ```
-
-⚠️ Key safety considerations
-When deploying SSE mode using Docker, due to the insecure SSE transport protocol and sensitive configuration file mounting, strict security constraints must be implemented in the production environment
-
-mcp config
-
-```shell
-{
-  "mcpServers": {
-    "mcp-server-kubernetes": {
-      "url": "http://localhost:3001/sse",
-      "args": []
-    }
-  }
-}
-```
-
-### Why is SSE Transport Unsafe?
-
-SSE transport exposes an http endpoint that can be accessed by anyone with the URL. This can be a security risk if the server is not properly secured. It is recommended to use a secure proxy server to proxy to the SSE endpoint. In addition, anyone with access to the URL will be able to utilize the authentication of your kubeconfig to make requests to your Kubernetes cluster. You should add logging to your proxy in order to monitor user requests to the SSE endpoint.
