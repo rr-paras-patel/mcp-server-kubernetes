@@ -93,6 +93,7 @@ npx mcp-chat --config "%APPDATA%\Claude\claude_desktop_config.json"
 - [x] Troubleshooting Prompt (`k8s-diagnose`)
   - Guides through a systematic Kubernetes troubleshooting flow for pods based on a keyword and optional namespace.
 - [x] Non-destructive mode for read and create/update-only access to clusters
+- [x] Secrets masking for security (automatically masks sensitive data in secret outputs)
 
 ## Prompts
 
@@ -207,6 +208,32 @@ The following destructive operations are disabled:
 - `uninstall_helm_chart`: Uninstalling Helm charts
 - `cleanup`: Cleanup of managed resources
 - `kubectl_generic`: General kubectl command access (may include destructive operations)
+
+### Secrets Masking
+
+You can enable automatic masking of sensitive data in Kubernetes secrets to prevent accidental exposure of confidential information:
+
+```shell
+MASK_SECRETS=true npx mcp-server-kubernetes
+```
+
+For Claude Desktop configuration with secrets masking:
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-secure": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "MASK_SECRETS": "true"
+      }
+    }
+  }
+}
+```
+
+When enabled, `kubectl get secrets` and `kubectl get secret` commands will automatically mask all values in the `data` section with `***` while preserving the structure and metadata.
 
 For additional advanced features, see the [ADVANCED_README.md](ADVANCED_README.md).
 

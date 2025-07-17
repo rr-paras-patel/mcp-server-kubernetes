@@ -2,6 +2,7 @@ import { KubernetesManager } from "../types.js";
 import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { getSpawnMaxBuffer } from "../config/max-buffer.js";
+import * as yaml from "js-yaml";
 
 export const kubectlGetSchema = {
   name: "kubectl_get",
@@ -151,12 +152,21 @@ export async function kubectlGet(
         env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
       });
 
+      // Apply secrets masking if enabled and dealing with secrets
+      const shouldMaskSecrets = process.env.MASK_SECRETS === "true" && 
+        (resourceType === "secrets" || resourceType === "secret");
+      
+      let processedResult = result;
+      if (shouldMaskSecrets) {
+        processedResult = maskSecretsData(result, output);
+      }
+
       // Format the results for better readability
       const isListOperation = !name;
       if (isListOperation && output === "json") {
         try {
           // Parse JSON and extract key information
-          const parsed = JSON.parse(result);
+          const parsed = JSON.parse(processedResult);
 
           if (parsed.kind && parsed.kind.endsWith("List") && parsed.items) {
             if (resourceType === "events") {
@@ -211,7 +221,7 @@ export async function kubectlGet(
         content: [
           {
             type: "text",
-            text: result,
+            text: processedResult,
           },
         ],
       };
@@ -315,4 +325,79 @@ function isNonNamespacedResource(resourceType: string): boolean {
   ];
 
   return nonNamespacedResources.includes(resourceType.toLowerCase());
+}
+
+// Helper function to mask leaf values in data sections of secrets
+function maskDataValues(obj: any): any {
+  
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => maskDataValues(item));
+  }
+  
+  if (typeof obj === "object") {
+    const result: any = {};
+    for (const key in obj) {
+      if (key === "data" && typeof obj[key] === "object" && obj[key] !== null) {
+        // This is a data section - mask all leaf values within it
+        result[key] = maskAllLeafValues(obj[key]);
+      } else {
+        result[key] = maskDataValues(obj[key]);
+      }
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
+// Helper function to recursively mask all leaf values
+function maskAllLeafValues(obj: any): any {
+  const maskValue = "***";
+  
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => maskAllLeafValues(item));
+  }
+  
+  if (typeof obj === "object") {
+    const result: any = {};
+    for (const key in obj) {
+      result[key] = maskAllLeafValues(obj[key]);
+    }
+    return result;
+  }
+  
+  // This is a leaf value (string, number, boolean) - mask it
+  return maskValue;
+}
+
+// Helper function to mask sensitive data in secrets
+function maskSecretsData(output: string, format: string): string {
+  try {
+    if (format === "json") {
+      const parsed = JSON.parse(output);
+      const masked = maskDataValues(parsed);
+      return JSON.stringify(masked, null, 2);
+    } else if (format === "yaml") {
+      // Parse YAML to JSON, mask, then convert back to YAML
+      const parsed = yaml.load(output);
+      const masked = maskDataValues(parsed);
+      return yaml.dump(masked, { 
+        indent: 2,
+        lineWidth: -1, // Don't wrap lines
+        noRefs: true   // Don't use references
+      });
+    }
+  } catch (error) {
+    console.warn("Failed to parse secrets output for masking:", error);
+  }
+  
+  return output;
 }
