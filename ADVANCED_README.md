@@ -241,6 +241,32 @@ For Non destructive mode in Claude Desktop, you can specify the env var like thi
 }
 ```
 
+### Secrets Masking
+
+You can enable automatic masking of sensitive data in Kubernetes secrets to prevent accidental exposure of confidential information:
+
+```shell
+MASK_SECRETS=true npx mcp-server-kubernetes
+```
+
+For Claude Desktop configuration with secrets masking:
+
+```json
+{
+  "mcpServers": {
+    "kubernetes-secure": {
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"],
+      "env": {
+        "MASK_SECRETS": "true"
+      }
+    }
+  }
+}
+```
+
+When enabled, `kubectl get secrets` and `kubectl get secret` commands will automatically mask all values in the `data` section with `***` while preserving the structure and metadata. Note that this only applies to the `kubectl get secrets` command output and does not mask secrets that may appear in logs or other operations.
+
 ### SSE Transport
 
 To enable [SSE transport](https://modelcontextprotocol.io/docs/concepts/transports#server-sent-events-sse) for mcp-server-kubernetes, use the ENABLE_UNSAFE_SSE_TRANSPORT environment variable.
