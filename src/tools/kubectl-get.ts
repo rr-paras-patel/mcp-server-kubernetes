@@ -330,7 +330,7 @@ function isNonNamespacedResource(resourceType: string): boolean {
 // Helper function to mask leaf values in data sections of secrets
 function maskDataValues(obj: any): any {
   
-  if (obj === null || obj === undefined) {
+  if (obj == null) {
     return obj;
   }
   
@@ -358,7 +358,7 @@ function maskDataValues(obj: any): any {
 function maskAllLeafValues(obj: any): any {
   const maskValue = "***";
   
-  if (obj === null || obj === undefined) {
+  if (obj == null) {
     return obj;
   }
   
