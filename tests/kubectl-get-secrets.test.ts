@@ -240,7 +240,7 @@ data:
       }
     });
 
-    test("should not mask secrets when MASK_SECRETS is unset", async () => {
+    test("should mask secrets when MASK_SECRETS is unset (default behavior)", async () => {
       const { transport, client } = await createClientWithEnv();
       
       try {
@@ -293,9 +293,9 @@ data:
         expect(result.content[0].type).toBe("text");
         const secretData = JSON.parse(result.content[0].text);
         
-        // Verify that data fields are NOT masked (default behavior)
+        // Verify that data fields are masked (default behavior)
         expect(secretData.data).toBeDefined();
-        expect(secretData.data.username).toBe("dGVzdC11c2VybmFtZQ==");
+        expect(secretData.data.username).toBe("***");
 
         // Clean up
         await client.request(

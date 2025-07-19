@@ -153,7 +153,7 @@ export async function kubectlGet(
       });
 
       // Apply secrets masking if enabled and dealing with secrets
-      const shouldMaskSecrets = process.env.MASK_SECRETS === "true" && 
+      const shouldMaskSecrets = process.env.MASK_SECRETS !== "false" && 
         (resourceType === "secrets" || resourceType === "secret");
       
       let processedResult = result;
