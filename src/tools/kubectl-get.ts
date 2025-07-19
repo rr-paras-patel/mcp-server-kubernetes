@@ -327,7 +327,12 @@ function isNonNamespacedResource(resourceType: string): boolean {
   return nonNamespacedResources.includes(resourceType.toLowerCase());
 }
 
-// Helper function to mask leaf values in data sections of secrets
+/**
+ * Recursively traverses an object and masks values in 'data' sections of Kubernetes secrets.
+ * 
+ * @param {any} obj - The object to traverse. Can be an array, object, or primitive value.
+ * @returns {any} A new object with masked values in 'data' sections.
+ */
 function maskDataValues(obj: any): any {
   
   if (obj == null) {
@@ -354,7 +359,12 @@ function maskDataValues(obj: any): any {
   return obj;
 }
 
-// Helper function to recursively mask all leaf values
+/**
+ * Recursively masks all leaf values (non-object, non-array values) in an object structure.
+ * 
+ * @param {any} obj - The input object or value to process.
+ * @returns {any} A new object or value with all leaf values replaced by a mask.
+ */
 function maskAllLeafValues(obj: any): any {
   const maskValue = "***";
   
@@ -378,7 +388,14 @@ function maskAllLeafValues(obj: any): any {
   return maskValue;
 }
 
-// Helper function to mask sensitive data in secrets
+/**
+ * Masks sensitive data in Kubernetes secrets by parsing the raw output and replacing
+ * all leaf values in the "data" section with a placeholder value ("***").
+ *
+ * @param {string} output - The raw output from a `kubectl` command, containing secrets data.
+ * @param {string} format - The format of the output, either "json" or "yaml".
+ * @returns {string} - The masked output in the same format as the input.
+ */
 function maskSecretsData(output: string, format: string): string {
   try {
     if (format === "json") {
