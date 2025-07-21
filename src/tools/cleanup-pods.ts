@@ -74,36 +74,32 @@ const getProblematicPods = (namespace: string, allNamespaces: boolean = false): 
     // Get all pods
     const podsOutput = executeCommand("kubectl", ["get", "pods", ...namespaceFlag, "--no-headers"]);
     
-    // Check each problematic state
-    for (const state of problematicStates) {
-      const matchingPods: string[] = [];
-      
-      // Use grep to find pods in this state
-      try {
-        const grepCommand = `echo '${podsOutput}' | grep "${state}" | awk '{print $1}'`;
-        const podNames = execFileSync("sh", ["-c", grepCommand], {
-          encoding: "utf8",
-          timeout: 10000,
-          maxBuffer: getSpawnMaxBuffer(),
-          env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
-        });
+    // Parse pods output using JavaScript instead of shell commands
+    const podLines = podsOutput.split('\n').filter(line => line.trim());
+    
+    for (const podLine of podLines) {
+      const columns = podLine.split(/\s+/); // Split by whitespace
+      if (columns.length >= 3) {
+        const podName = columns[0];
+        const podStatus = columns[2]; // Status is typically in the 3rd column
         
-        if (podNames.trim()) {
-          matchingPods.push(...podNames.trim().split('\n').filter(name => name.trim()));
+        // Check if pod status matches any problematic state
+        for (const state of problematicStates) {
+          if (podStatus.includes(state)) {
+            if (!results[state]) {
+              results[state] = [];
+            }
+            results[state].push(podName);
+            break; // A pod can only be in one state, so break after first match
+          }
         }
-      } catch (grepError) {
-        // No pods found in this state, which is fine
-      }
-      
-      if (matchingPods.length > 0) {
-        results[state] = matchingPods;
       }
     }
+    
+    return results;
   } catch (error: any) {
     throw new Error(`Failed to get pods: ${error.message}`);
   }
-
-  return results;
 };
 
 const deletePods = (podNames: string[], namespace: string, allNamespaces: boolean = false): void => {

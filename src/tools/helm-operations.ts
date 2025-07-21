@@ -11,7 +11,7 @@ import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
 export const installHelmChartSchema = {
   name: "install_helm_chart",
-  description: "Install a Helm chart",
+  description: "Install a Helm chart. Use template mode if regular helm install has authentication issues or kubeconfig API version mismatches.",
   inputSchema: {
     type: "object",
     properties: {
@@ -21,11 +21,11 @@ export const installHelmChartSchema = {
       },
       chart: {
         type: "string",
-        description: "Chart name",
+        description: "Chart name or path to chart directory",
       },
       repo: {
         type: "string",
-        description: "Chart repository URL",
+        description: "Chart repository URL (optional if using local chart path)",
       },
       namespace: {
         type: "string",
@@ -37,8 +37,22 @@ export const installHelmChartSchema = {
         properties: {},
         additionalProperties: true,
       },
+      valuesFile: {
+        type: "string",
+        description: "Path to values.yaml file (optional, alternative to values object)",
+      },
+      createNamespace: {
+        type: "boolean",
+        description: "Whether to create the namespace if it doesn't exist",
+        default: true,
+      },
+      useTemplate: {
+        type: "boolean",
+        description: "Use helm template + kubectl apply instead of helm install (bypasses authentication issues)",
+        default: false,
+      },
     },
-    required: ["name", "chart", "repo", "namespace"],
+    required: ["name", "chart", "namespace"],
   },
 };
 
@@ -125,6 +139,12 @@ export async function installHelmChart(
       executeHelmCommand("helm", ["repo", "update"]);
     }
 
+    // Use template mode if requested
+    if (params.useTemplate) {
+      return await installHelmChartTemplate(params);
+    }
+
+    // Regular helm install
     let command = "helm";
     let args = [
       "install",
@@ -132,8 +152,12 @@ export async function installHelmChart(
       params.chart,
       "--namespace",
       params.namespace,
-      "--create-namespace",
     ];
+
+    // Add create-namespace flag if requested
+    if (params.createNamespace !== false) {
+      args.push("--create-namespace");
+    }
 
     // Handle values if provided
     if (params.values) {
@@ -165,6 +189,100 @@ export async function installHelmChart(
     };
   } catch (error: any) {
     throw new Error(`Failed to install Helm chart: ${error.message}`);
+  }
+}
+
+async function installHelmChartTemplate(
+  params: HelmInstallOperation
+): Promise<{ content: { type: string; text: string }[] }> {
+  const { mkdtempSync, rmSync } = await import("fs");
+  const { join } = await import("path");
+  const { tmpdir } = await import("os");
+  
+  const tempDir = mkdtempSync(join(tmpdir(), 'helm-template-'));
+  let valuesFilePath: string | undefined;
+  let generatedYamlPath: string | undefined;
+
+  try {
+    // Create namespace if requested
+    if (params.createNamespace !== false) {
+      try {
+        executeHelmCommand("kubectl", ["create", "namespace", params.namespace]);
+      } catch (error: any) {
+        // Namespace might already exist, which is fine
+        if (!error.message.includes("already exists")) {
+          throw error;
+        }
+      }
+    }
+
+    // Prepare values file
+    if (params.valuesFile) {
+      valuesFilePath = params.valuesFile;
+    } else if (params.values) {
+      valuesFilePath = join(tempDir, `${params.name}-values.yaml`);
+      writeFileSync(valuesFilePath, yaml.stringify(params.values));
+    }
+
+    // Generate YAML using helm template
+    const helmArgs = [
+      "template",
+      params.name,
+      params.chart,
+      "--namespace",
+      params.namespace,
+    ];
+
+    if (valuesFilePath && valuesFilePath !== params.valuesFile) {
+      helmArgs.push("-f", valuesFilePath);
+    } else if (params.valuesFile) {
+      helmArgs.push("-f", params.valuesFile);
+    }
+
+    const generatedYaml = executeHelmCommand("helm", helmArgs);
+
+    // Save generated YAML to temporary file
+    generatedYamlPath = join(tempDir, `${params.name}-generated.yaml`);
+    writeFileSync(generatedYamlPath, generatedYaml);
+
+    // Apply the generated YAML using kubectl
+    executeHelmCommand("kubectl", ["apply", "-f", generatedYamlPath, "-n", params.namespace]);
+
+    const response = {
+      status: "installed",
+      message: `Successfully installed ${params.name} using helm template + kubectl apply`,
+      details: {
+        namespace: params.namespace,
+        chart: params.chart,
+        generatedYamlPath: generatedYamlPath,
+        valuesUsed: valuesFilePath || "default values",
+      },
+    };
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(response, null, 2),
+        },
+      ],
+    };
+  } catch (error: any) {
+    throw new Error(`Failed to install Helm chart using template method: ${error.message}`);
+  } finally {
+    // Cleanup temporary files
+    try {
+      if (valuesFilePath && valuesFilePath.startsWith(tempDir)) {
+        unlinkSync(valuesFilePath);
+      }
+      if (generatedYamlPath) {
+        unlinkSync(generatedYamlPath);
+      }
+      // Remove temp directory
+      rmSync(tempDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+    }
   }
 }
 
