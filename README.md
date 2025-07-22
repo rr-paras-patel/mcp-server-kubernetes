@@ -263,104 +263,101 @@ kubectl apply -f events-exporter.yaml -n kube-event-exporter
 - `valuesFile`: Path to values.yaml file (optional, alternative to values object)
 - `createNamespace`: Whether to create the namespace if it doesn't exist (default: true)
 
-### Pod Cleanup Tool
+### Pod Cleanup with Existing Tools
 
-The `cleanup_pods` tool helps you identify and optionally force delete pods in problematic states. This is useful for cleaning up stuck or failed pods that are consuming cluster resources.
+Pod cleanup can be achieved using the existing `kubectl_get` and `kubectl_delete` tools with field selectors. This approach leverages standard Kubernetes functionality without requiring dedicated cleanup tools.
 
-#### Problematic Pod States
+#### Identifying Problematic Pods
 
-The tool identifies pods in the following states:
-- **Evicted**: Pods that have been evicted due to resource constraints
-- **ContainerStatusUnknown**: Pods with unknown container status
-- **Completed**: Pods that have completed their execution
-- **Error**: Pods that have encountered errors
-- **ImagePullBackOff**: Pods that cannot pull their container images
-- **CrashLoopBackOff**: Pods that keep crashing and restarting
+Use `kubectl_get` with field selectors to identify pods in problematic states:
 
-#### Usage Examples
-
-**1. List problematic pods (dry run - default):**
+**Get failed pods:**
 ```json
 {
-  "name": "cleanup_pods",
+  "name": "kubectl_get",
   "arguments": {
+    "resourceType": "pods",
     "namespace": "default",
-    "dryRun": true,
-    "forceDelete": false
+    "fieldSelector": "status.phase=Failed"
   }
 }
 ```
 
-**2. Force delete problematic pods (requires confirmation):**
+**Get completed pods:**
 ```json
 {
-  "name": "cleanup_pods",
+  "name": "kubectl_get",
   "arguments": {
+    "resourceType": "pods",
     "namespace": "default",
-    "dryRun": false,
-    "forceDelete": true,
-    "confirmDelete": true
+    "fieldSelector": "status.phase=Succeeded"
   }
 }
 ```
 
-**3. Clean up pods in all namespaces:**
+**Get pods with specific conditions:**
 ```json
 {
-  "name": "cleanup_pods",
+  "name": "kubectl_get",
   "arguments": {
+    "resourceType": "pods",
     "namespace": "default",
-    "allNamespaces": true,
-    "dryRun": false,
-    "forceDelete": true,
-    "confirmDelete": true
+    "fieldSelector": "status.conditions[?(@.type=='Ready')].status=False"
+  }
+}
+```
+
+#### Deleting Problematic Pods
+
+Use `kubectl_delete` with field selectors to delete pods in problematic states:
+
+**Delete failed pods:**
+```json
+{
+  "name": "kubectl_delete",
+  "arguments": {
+    "resourceType": "pods",
+    "namespace": "default",
+    "fieldSelector": "status.phase=Failed",
+    "force": true,
+    "gracePeriodSeconds": 0
+  }
+}
+```
+
+**Delete completed pods:**
+```json
+{
+  "name": "kubectl_delete",
+  "arguments": {
+    "resourceType": "pods",
+    "namespace": "default",
+    "fieldSelector": "status.phase=Succeeded",
+    "force": true,
+    "gracePeriodSeconds": 0
   }
 }
 ```
 
 #### Workflow
 
-1. **First, list the pods** (dry run):
-   ```json
-   {
-     "name": "cleanup_pods",
-     "arguments": {
-       "namespace": "default"
-     }
-   }
-   ```
+1. **First, identify problematic pods** using `kubectl_get` with appropriate field selectors
+2. **Review the list** of pods in the response
+3. **Delete the pods** using `kubectl_delete` with the same field selectors
 
-2. **Review the list** of problematic pods in the response
+#### Available Field Selectors
 
-3. **If you want to delete them**, call again with confirmation:
-   ```json
-   {
-     "name": "cleanup_pods",
-     "arguments": {
-       "namespace": "default",
-       "dryRun": false,
-       "forceDelete": true,
-       "confirmDelete": true
-     }
-   }
-   ```
-
-#### Parameters
-
-- `namespace`: Kubernetes namespace to clean up
-- `dryRun`: Show list of problematic pods without deleting (default: true)
-- `forceDelete`: Force delete the problematic pods (default: false)
-- `allNamespaces`: Clean up pods in all namespaces (default: false)
-- `confirmDelete`: Explicit confirmation to delete pods (default: false). Must be set to true along with forceDelete=true
+- `status.phase=Failed` - Pods that have failed
+- `status.phase=Succeeded` - Pods that have completed successfully
+- `status.phase=Pending` - Pods that are pending
+- `status.conditions[?(@.type=='Ready')].status=False` - Pods that are not ready
 
 #### Safety Features
 
-- **Default dry run**: The tool defaults to `dryRun=true` to show you what would be deleted before actually deleting
-- **Two-step confirmation**: Requires both `forceDelete=true` AND `confirmDelete=true` to actually delete pods
-- **Clear workflow**: First lists pods, then requires explicit confirmation to delete
-- **Force deletion**: Uses `--force --grace-period=0` for immediate deletion
-- **State-specific targeting**: Only targets pods in specific problematic states
-- **Error handling**: Continues deletion even if individual pods fail to delete
+- **Field selectors**: Target specific pod states precisely
+- **Force deletion**: Use `force=true` and `gracePeriodSeconds=0` for immediate deletion
+- **Namespace isolation**: Target specific namespaces or use `allNamespaces=true`
+- **Standard kubectl**: Uses well-established Kubernetes patterns
 
 ### Node Management Tool
 

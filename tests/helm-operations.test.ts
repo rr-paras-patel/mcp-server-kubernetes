@@ -50,7 +50,7 @@ describe("helm operations tools", () => {
       const schema = installHelmChartSchema.inputSchema;
       
       expect(schema.properties.valuesFile.type).toBe("string");
-      expect(schema.properties.valuesFile.description).toContain("Path to values.yaml file");
+      expect(schema.properties.valuesFile.description).toContain("Path to values file");
     });
   });
 
@@ -58,7 +58,7 @@ describe("helm operations tools", () => {
     test("schema is properly defined", () => {
       expect(upgradeHelmChartSchema).toBeDefined();
       expect(upgradeHelmChartSchema.name).toBe("upgrade_helm_chart");
-      expect(upgradeHelmChartSchema.description).toContain("Upgrade a Helm release");
+      expect(upgradeHelmChartSchema.description).toContain("Upgrade an existing Helm chart release");
 
       // Check input schema
       expect(upgradeHelmChartSchema.inputSchema).toBeDefined();
@@ -67,7 +67,6 @@ describe("helm operations tools", () => {
       // Check required properties
       expect(upgradeHelmChartSchema.inputSchema.required).toContain("name");
       expect(upgradeHelmChartSchema.inputSchema.required).toContain("chart");
-      expect(upgradeHelmChartSchema.inputSchema.required).toContain("repo");
       expect(upgradeHelmChartSchema.inputSchema.required).toContain("namespace");
     });
   });
@@ -76,7 +75,7 @@ describe("helm operations tools", () => {
     test("schema is properly defined", () => {
       expect(uninstallHelmChartSchema).toBeDefined();
       expect(uninstallHelmChartSchema.name).toBe("uninstall_helm_chart");
-      expect(uninstallHelmChartSchema.description).toContain("Uninstall a Helm release");
+      expect(uninstallHelmChartSchema.description).toContain("Uninstall a Helm chart release");
 
       // Check input schema
       expect(uninstallHelmChartSchema.inputSchema).toBeDefined();

@@ -1,6 +1,26 @@
+/**
+ * Tool: node_management
+ * Manage Kubernetes nodes with cordon, drain, and uncordon operations.
+ * Provides safety features for node operations and implements proper error handling 
+ * and confirmation requirements for destructive operations.
+ * Note: Use kubectl_get with resourceType="nodes" to list nodes.
+ */
+
 import { execFileSync } from "child_process";
 import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 
+/**
+ * Schema for node_management tool.
+ * - operation: Node operation to perform (cordon, drain, uncordon)
+ * - nodeName: Name of the node to operate on (required for cordon, drain, uncordon)
+ * - force: Force the operation even if there are unmanaged pods (for drain)
+ * - gracePeriod: Grace period for pod termination (for drain)
+ * - deleteLocalData: Delete local data even if emptyDir volumes are used (for drain)
+ * - ignoreDaemonsets: Ignore DaemonSet-managed pods (for drain)
+ * - timeout: Timeout for drain operation
+ * - dryRun: Show what would be done without actually doing it (for drain)
+ * - confirmDrain: Explicit confirmation to drain the node (required for drain)
+ */
 export const nodeManagementSchema = {
   name: "node_management",
   description: "Manage Kubernetes nodes with cordon, drain, and uncordon operations",
@@ -10,7 +30,7 @@ export const nodeManagementSchema = {
       operation: {
         type: "string",
         description: "Node operation to perform",
-        enum: ["cordon", "drain", "uncordon", "list"],
+        enum: ["cordon", "drain", "uncordon"],
       },
       nodeName: {
         type: "string",
@@ -56,8 +76,11 @@ export const nodeManagementSchema = {
   },
 };
 
+/**
+ * Interface for node_management tool parameters.
+ */
 interface NodeManagementParams {
-  operation: "cordon" | "drain" | "uncordon" | "list";
+  operation: "cordon" | "drain" | "uncordon";
   nodeName?: string;
   force?: boolean;
   gracePeriod?: number;
@@ -68,6 +91,13 @@ interface NodeManagementParams {
   confirmDrain?: boolean;
 }
 
+/**
+ * Execute a command using child_process.execFileSync with proper error handling.
+ * @param command - The command to execute
+ * @param args - Array of command arguments
+ * @returns The command output as a string
+ * @throws Error if command execution fails
+ */
 const executeCommand = (command: string, args: string[]): string => {
   try {
     return execFileSync(command, args, {
@@ -81,6 +111,12 @@ const executeCommand = (command: string, args: string[]): string => {
   }
 };
 
+/**
+ * Get the status of a specific node.
+ * @param nodeName - Name of the node to get status for
+ * @returns Node status as JSON object
+ * @throws Error if node status retrieval fails
+ */
 const getNodeStatus = (nodeName: string): any => {
   try {
     const output = executeCommand("kubectl", ["get", "node", nodeName, "-o", "json"]);
@@ -90,15 +126,14 @@ const getNodeStatus = (nodeName: string): any => {
   }
 };
 
-const listNodes = (): any => {
-  try {
-    const output = executeCommand("kubectl", ["get", "nodes", "-o", "json"]);
-    return JSON.parse(output);
-  } catch (error: any) {
-    throw new Error(`Failed to list nodes: ${error.message}`);
-  }
-};
 
+
+/**
+ * Main node_management function that handles all node operations.
+ * Implements safety features and proper error handling for node management tasks.
+ * @param params - Node management parameters
+ * @returns Promise with operation results
+ */
 export async function nodeManagement(
   params: NodeManagementParams
 ): Promise<{ content: { type: string; text: string }[] }> {
@@ -111,166 +146,206 @@ export async function nodeManagement(
     ignoreDaemonsets = true,
     timeout = "0",
     dryRun = false,
-    confirmDrain = false,
+    confirmDrain = false
   } = params;
 
   try {
-    let response: any = {
-      operation: operation,
-      timestamp: new Date().toISOString(),
-    };
-
     switch (operation) {
-      case "list": {
-        const nodes = listNodes();
-        response.message = `Found ${nodes.items?.length || 0} nodes in the cluster`;
-        response.nodes = nodes.items?.map((node: any) => ({
-          name: node.metadata.name,
-          status: node.status?.conditions?.find((c: any) => c.type === "Ready")?.status || "Unknown",
-          schedulable: !node.spec?.unschedulable,
-          taints: node.spec?.taints || [],
-        })) || [];
-        break;
-      }
-
-      case "cordon": {
-        if (!nodeName) {
-          throw new Error("nodeName is required for cordon operation");
-        }
-
-        // Get node status before cordoning
-        const beforeStatus = getNodeStatus(nodeName);
-        const wasSchedulable = !beforeStatus.spec?.unschedulable;
-
-        if (wasSchedulable) {
-          executeCommand("kubectl", ["cordon", nodeName]);
-          response.message = `Successfully cordoned node ${nodeName}`;
-          response.action = "Node marked as unschedulable";
-        } else {
-          response.message = `Node ${nodeName} is already cordoned`;
-          response.action = "No action taken - node already unschedulable";
-        }
-
-        // Get updated status
-        const afterStatus = getNodeStatus(nodeName);
-        response.nodeStatus = {
-          name: nodeName,
-          schedulable: !afterStatus.spec?.unschedulable,
-          conditions: afterStatus.status?.conditions || [],
-        };
-        break;
-      }
-
-      case "uncordon": {
-        if (!nodeName) {
-          throw new Error("nodeName is required for uncordon operation");
-        }
-
-        // Get node status before uncordoning
-        const beforeStatus = getNodeStatus(nodeName);
-        const wasSchedulable = !beforeStatus.spec?.unschedulable;
-
-        if (!wasSchedulable) {
-          executeCommand("kubectl", ["uncordon", nodeName]);
-          response.message = `Successfully uncordoned node ${nodeName}`;
-          response.action = "Node marked as schedulable";
-        } else {
-          response.message = `Node ${nodeName} is already uncordoned`;
-          response.action = "No action taken - node already schedulable";
-        }
-
-        // Get updated status
-        const afterStatus = getNodeStatus(nodeName);
-        response.nodeStatus = {
-          name: nodeName,
-          schedulable: !afterStatus.spec?.unschedulable,
-          conditions: afterStatus.status?.conditions || [],
-        };
-        break;
-      }
-
-      case "drain": {
-        if (!nodeName) {
-          throw new Error("nodeName is required for drain operation");
-        }
-
-        // Get node status before draining
-        const beforeStatus = getNodeStatus(nodeName);
-        const wasSchedulable = !beforeStatus.spec?.unschedulable;
-
-        // Build drain command arguments
-        const drainArgs = ["drain", nodeName];
-
-        if (force) {
-          drainArgs.push("--force");
-        }
-
-        if (gracePeriod !== -1) {
-          drainArgs.push("--grace-period", gracePeriod.toString());
-        }
-
-        if (deleteLocalData) {
-          drainArgs.push("--delete-local-data");
-        }
-
-        if (ignoreDaemonsets) {
-          drainArgs.push("--ignore-daemonsets");
-        }
-
-        if (timeout !== "0") {
-          drainArgs.push("--timeout", timeout);
-        }
-
-        if (dryRun) {
-          drainArgs.push("--dry-run=client");
-        }
-
-        if (dryRun) {
-          // Dry run - show what would be done
-          const dryRunOutput = executeCommand("kubectl", drainArgs);
-          response.message = `Dry run for draining node ${nodeName}`;
-          response.action = "Shows what would be done without actually doing it";
-          response.dryRunOutput = dryRunOutput;
-          response.nextStep = "To actually drain the node, set dryRun=false and confirmDrain=true";
-        } else if (confirmDrain) {
-          // Actually drain the node
-          const drainOutput = executeCommand("kubectl", drainArgs);
-          response.message = `Successfully drained node ${nodeName}`;
-          response.action = "Node drained and marked as unschedulable";
-          response.drainOutput = drainOutput;
-
-          // Get updated status
-          const afterStatus = getNodeStatus(nodeName);
-          response.nodeStatus = {
-            name: nodeName,
-            schedulable: !afterStatus.spec?.unschedulable,
-            conditions: afterStatus.status?.conditions || [],
-          };
-        } else {
-          // Show what would be done without confirmation
-          const dryRunOutput = executeCommand("kubectl", [...drainArgs, "--dry-run=client"]);
-          response.message = `Drain operation requested for node ${nodeName} (not confirmed)`;
-          response.action = "To actually drain the node, set confirmDrain=true";
-          response.warning = "Drain operation requires explicit confirmation. Set confirmDrain=true to proceed.";
-          response.dryRunOutput = dryRunOutput;
-          response.nextStep = "To proceed with draining, call again with confirmDrain=true";
-        }
-        break;
-      }
-
+      case "cordon":
+        return handleCordonNode(nodeName!);
+      case "uncordon":
+        return handleUncordonNode(nodeName!);
+      case "drain":
+        return handleDrainNode({
+          nodeName: nodeName!,
+          force,
+          gracePeriod,
+          deleteLocalData,
+          ignoreDaemonsets,
+          timeout,
+          dryRun,
+          confirmDrain
+        });
       default:
         throw new Error(`Unknown operation: ${operation}`);
+    }
+  } catch (error: any) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Node management operation failed: ${error.message}`
+        }
+      ]
+    };
+  }
+}
+
+
+
+/**
+ * Handle the cordon node operation.
+ * @param nodeName - Name of the node to cordon
+ * @returns Promise with cordon operation results
+ */
+async function handleCordonNode(nodeName: string): Promise<{ content: { type: string; text: string }[] }> {
+  try {
+    // Check if node exists and get current status
+    const nodeStatus = getNodeStatus(nodeName);
+    const isSchedulable = !nodeStatus.spec.unschedulable;
+
+    if (!isSchedulable) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Node '${nodeName}' is already cordoned (unschedulable)`
+          }
+        ]
+      };
+    }
+
+    // Cordon the node
+    executeCommand("kubectl", ["cordon", nodeName]);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully cordoned node '${nodeName}'. The node is now unschedulable.`
+        }
+      ]
+    };
+  } catch (error: any) {
+    throw new Error(`Failed to cordon node: ${error.message}`);
+  }
+}
+
+/**
+ * Handle the uncordon node operation.
+ * @param nodeName - Name of the node to uncordon
+ * @returns Promise with uncordon operation results
+ */
+async function handleUncordonNode(nodeName: string): Promise<{ content: { type: string; text: string }[] }> {
+  try {
+    // Check if node exists and get current status
+    const nodeStatus = getNodeStatus(nodeName);
+    const isSchedulable = !nodeStatus.spec.unschedulable;
+
+    if (isSchedulable) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Node '${nodeName}' is already uncordoned (schedulable)`
+          }
+        ]
+      };
+    }
+
+    // Uncordon the node
+    executeCommand("kubectl", ["uncordon", nodeName]);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully uncordoned node '${nodeName}'. The node is now schedulable.`
+        }
+      ]
+    };
+  } catch (error: any) {
+    throw new Error(`Failed to uncordon node: ${error.message}`);
+  }
+}
+
+/**
+ * Handle the drain node operation with safety checks and confirmation.
+ * @param params - Drain operation parameters
+ * @returns Promise with drain operation results
+ */
+async function handleDrainNode(params: {
+  nodeName: string;
+  force: boolean;
+  gracePeriod: number;
+  deleteLocalData: boolean;
+  ignoreDaemonsets: boolean;
+  timeout: string;
+  dryRun: boolean;
+  confirmDrain: boolean;
+}): Promise<{ content: { type: string; text: string }[] }> {
+  const {
+    nodeName,
+    force,
+    gracePeriod,
+    deleteLocalData,
+    ignoreDaemonsets,
+    timeout,
+    dryRun,
+    confirmDrain
+  } = params;
+
+  try {
+    // Check if node exists and get current status
+    const nodeStatus = getNodeStatus(nodeName);
+    const isSchedulable = !nodeStatus.spec.unschedulable;
+
+    if (!isSchedulable) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Node '${nodeName}' is already cordoned (unschedulable). Drain operation may not be necessary.`
+          }
+        ]
+      };
+    }
+
+    // Check for confirmation if not in dry run mode
+    if (!dryRun && !confirmDrain) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Drain operation requires explicit confirmation. Set confirmDrain=true to proceed with draining node '${nodeName}'.`
+          }
+        ]
+      };
+    }
+
+    // Build drain command arguments
+    const drainArgs = ["drain", nodeName];
+    
+    if (force) drainArgs.push("--force");
+    if (gracePeriod >= 0) drainArgs.push("--grace-period", gracePeriod.toString());
+    if (deleteLocalData) drainArgs.push("--delete-local-data");
+    if (ignoreDaemonsets) drainArgs.push("--ignore-daemonsets");
+    if (timeout !== "0") drainArgs.push("--timeout", timeout);
+    if (dryRun) drainArgs.push("--dry-run=client");
+
+    // Execute drain command
+    const drainOutput = executeCommand("kubectl", drainArgs);
+
+    if (dryRun) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Dry run drain operation for node '${nodeName}':\n\n${drainOutput}\n\nTo perform the actual drain, set dryRun=false and confirmDrain=true.`
+          }
+        ]
+      };
     }
 
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify(response, null, 2),
-        },
-      ],
+          text: `Successfully drained node '${nodeName}'.\n\n${drainOutput}`
+        }
+      ]
     };
   } catch (error: any) {
-    throw new Error(`Node management operation failed: ${error.message}`);
+    throw new Error(`Failed to drain node: ${error.message}`);
   }
 } 
