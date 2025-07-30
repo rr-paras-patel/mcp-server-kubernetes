@@ -3,7 +3,19 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { HelmResponseSchema } from "../src/models/helm-models.js";
 import { KubectlResponseSchema } from "../src/models/kubectl-models.js";
+import { asResponseSchema } from "./context-helper";
 import * as fs from "fs";
+import { execSync } from "child_process";
+
+// Check if Helm is available
+function isHelmAvailable(): boolean {
+  try {
+    execSync("helm version", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -32,7 +44,7 @@ async function waitForClusterReadiness(
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
 
       // Then check if we can list services
@@ -48,7 +60,7 @@ async function waitForClusterReadiness(
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
       return;
     } catch (e) {
@@ -68,6 +80,18 @@ describe("helm operations", () => {
   let client: Client;
   const testReleaseName = "test-nginx";
   const testNamespace = "default-helm";
+
+  // Skip tests if Helm is not available
+  if (!isHelmAvailable()) {
+    test.skip("helm chart values validation", () => {
+      console.log("Skipping Helm tests - Helm not available");
+    });
+    
+    test.skip("helm chart lifecycle", () => {
+      console.log("Skipping Helm tests - Helm not available");
+    });
+    return;
+  }
 
   beforeEach(async () => {
     try {
@@ -187,7 +211,7 @@ describe("helm operations", () => {
           }
         }
       },
-      HelmResponseSchema
+      asResponseSchema(HelmResponseSchema)
     );
   }, 60000);
 
@@ -205,7 +229,7 @@ describe("helm operations", () => {
             },
           },
         },
-        KubectlResponseSchema
+        asResponseSchema(KubectlResponseSchema)
       );
       // Wait for namespace to be ready
       await sleep(2000);
@@ -229,7 +253,7 @@ describe("helm operations", () => {
             },
           },
         },
-        HelmResponseSchema
+        asResponseSchema(HelmResponseSchema)
       );
       // Wait for cleanup
       await sleep(5000);
@@ -250,7 +274,7 @@ describe("helm operations", () => {
           },
         },
       },
-      KubectlResponseSchema
+      asResponseSchema(KubectlResponseSchema)
     );
 
     const initialDeploymentsCheck = JSON.parse(
@@ -292,7 +316,7 @@ describe("helm operations", () => {
           },
         },
       },
-      HelmResponseSchema
+      asResponseSchema(HelmResponseSchema)
     );
 
     expect(installResult.content[0].type).toBe("text");
@@ -315,7 +339,7 @@ describe("helm operations", () => {
           },
         },
       },
-      KubectlResponseSchema
+      asResponseSchema(KubectlResponseSchema)
     );
 
     const initialDeploymentsAfterInstall = JSON.parse(
@@ -352,7 +376,7 @@ describe("helm operations", () => {
           },
         },
       },
-      HelmResponseSchema
+      asResponseSchema(HelmResponseSchema)
     );
 
     expect(upgradeResult.content[0].type).toBe("text");
@@ -375,7 +399,7 @@ describe("helm operations", () => {
           },
         },
       },
-      KubectlResponseSchema
+      asResponseSchema(KubectlResponseSchema)
     );
 
     const deployments = JSON.parse(deploymentResult.content[0].text);
@@ -412,7 +436,7 @@ describe("helm operations", () => {
           },
         },
       },
-      HelmResponseSchema
+      asResponseSchema(HelmResponseSchema)
     );
 
     expect(uninstallResult.content[0].type).toBe("text");
@@ -435,7 +459,7 @@ describe("helm operations", () => {
           },
         },
       },
-      KubectlResponseSchema
+      asResponseSchema(KubectlResponseSchema)
     );
 
     const finalDeployments = JSON.parse(finalDeploymentResult.content[0].text);

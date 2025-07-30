@@ -255,7 +255,11 @@ async function installHelmChartTemplate(params: {
       content: [
         {
           type: "text",
-          text: `Helm chart '${params.name}' installed successfully using template mode.\n\nSteps performed:\n${steps.join('\n')}`
+          text: JSON.stringify({
+            status: "installed",
+            message: `Helm chart '${params.name}' installed successfully using template mode`,
+            steps: steps
+          })
         }
       ]
     };
@@ -264,7 +268,11 @@ async function installHelmChartTemplate(params: {
       content: [
         {
           type: "text",
-          text: `Failed to install Helm chart using template mode: ${error.message}\n\nSteps attempted:\n${steps.join('\n')}`
+          text: JSON.stringify({
+            status: "failed",
+            error: `Failed to install Helm chart using template mode: ${error.message}`,
+            steps: steps
+          })
         }
       ]
     };
@@ -329,7 +337,10 @@ export async function installHelmChart(params: {
       content: [
         {
           type: "text",
-          text: `Helm chart '${params.name}' installed successfully in namespace '${params.namespace}'`
+          text: JSON.stringify({
+            status: "installed",
+            message: `Helm chart '${params.name}' installed successfully in namespace '${params.namespace}'`
+          })
         }
       ]
     };
@@ -338,7 +349,10 @@ export async function installHelmChart(params: {
       content: [
         {
           type: "text",
-          text: `Failed to install Helm chart: ${error.message}`
+          text: JSON.stringify({
+            status: "failed",
+            error: `Failed to install Helm chart: ${error.message}`
+          })
         }
       ]
     };
@@ -391,7 +405,10 @@ export async function upgradeHelmChart(params: {
       content: [
         {
           type: "text",
-          text: `Helm chart '${params.name}' upgraded successfully in namespace '${params.namespace}'`
+          text: JSON.stringify({
+            status: "upgraded",
+            message: `Helm chart '${params.name}' upgraded successfully in namespace '${params.namespace}'`
+          })
         }
       ]
     };
@@ -400,7 +417,10 @@ export async function upgradeHelmChart(params: {
       content: [
         {
           type: "text",
-          text: `Failed to upgrade Helm chart: ${error.message}`
+          text: JSON.stringify({
+            status: "failed",
+            error: `Failed to upgrade Helm chart: ${error.message}`
+          })
         }
       ]
     };
@@ -423,7 +443,10 @@ export async function uninstallHelmChart(params: {
       content: [
         {
           type: "text",
-          text: `Helm chart '${params.name}' uninstalled successfully from namespace '${params.namespace}'`
+          text: JSON.stringify({
+            status: "uninstalled",
+            message: `Helm chart '${params.name}' uninstalled successfully from namespace '${params.namespace}'`
+          })
         }
       ]
     };
@@ -432,7 +455,10 @@ export async function uninstallHelmChart(params: {
       content: [
         {
           type: "text",
-          text: `Failed to uninstall Helm chart: ${error.message}`
+          text: JSON.stringify({
+            status: "failed",
+            error: `Failed to uninstall Helm chart: ${error.message}`
+          })
         }
       ]
     };
