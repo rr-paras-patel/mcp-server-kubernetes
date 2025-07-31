@@ -391,6 +391,16 @@ describe("helm operations", () => {
 
     expect(upgradeResult.content[0].type).toBe("text");
     const upgradeResponse = JSON.parse(upgradeResult.content[0].text);
+    
+    // Add debugging information
+    console.error("=== HELM UPGRADE RESPONSE ===");
+    console.error(JSON.stringify(upgradeResponse, null, 2));
+    console.error("=== END HELM UPGRADE RESPONSE ===");
+    
+    if (upgradeResponse.status === "failed") {
+      throw new Error(`Helm upgrade failed: ${upgradeResponse.error || 'Unknown error'}`);
+    }
+    
     expect(upgradeResponse.status).toBe("upgraded");
 
     // Wait for upgrade to take effect
