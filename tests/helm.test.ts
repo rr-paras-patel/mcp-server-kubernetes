@@ -197,31 +197,6 @@ describe("helm operations", () => {
 
     expect(installResult.content[0].type).toBe("text");
     const response = JSON.parse(installResult.content[0].text);
-    
-    // Add debugging information
-    console.error("=== HELM VALUES VALIDATION RESPONSE ===");
-    console.error(JSON.stringify(response, null, 2));
-    console.error("=== END HELM VALUES VALIDATION RESPONSE ===");
-    
-    if (response.status === "failed") {
-      const errorMessage = response.error || 'Unknown error';
-      
-      // Skip test if it's an infrastructure/installation issue
-      if (errorMessage.includes("chart not found") || 
-          errorMessage.includes("repository") ||
-          errorMessage.includes("network") ||
-          errorMessage.includes("connection") ||
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("permission") ||
-          errorMessage.includes("authentication")) {
-        console.log(`Skipping Helm values validation test due to infrastructure issue: ${errorMessage}`);
-        test.skip();
-        return;
-      }
-      
-      throw new Error(`Helm values validation failed: ${errorMessage}`);
-    }
-    
     expect(response.status).toBe("installed");
 
     // Clean up after test
@@ -353,22 +328,7 @@ describe("helm operations", () => {
     console.error("=== END HELM INSTALL RESPONSE ===");
     
     if (installResponse.status === "failed") {
-      const errorMessage = installResponse.error || 'Unknown error';
-      
-      // Skip test if it's an infrastructure/installation issue
-      if (errorMessage.includes("chart not found") || 
-          errorMessage.includes("repository") ||
-          errorMessage.includes("network") ||
-          errorMessage.includes("connection") ||
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("permission") ||
-          errorMessage.includes("authentication")) {
-        console.log(`Skipping Helm test due to infrastructure issue: ${errorMessage}`);
-        test.skip();
-        return;
-      }
-      
-      throw new Error(`Helm install failed: ${errorMessage}`);
+      throw new Error(`Helm install failed: ${installResponse.error || 'Unknown error'}`);
     }
     
     expect(installResponse.status).toBe("installed");
@@ -438,22 +398,7 @@ describe("helm operations", () => {
     console.error("=== END HELM UPGRADE RESPONSE ===");
     
     if (upgradeResponse.status === "failed") {
-      const errorMessage = upgradeResponse.error || 'Unknown error';
-      
-      // Skip test if it's an infrastructure/installation issue
-      if (errorMessage.includes("chart not found") || 
-          errorMessage.includes("repository") ||
-          errorMessage.includes("network") ||
-          errorMessage.includes("connection") ||
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("permission") ||
-          errorMessage.includes("authentication")) {
-        console.log(`Skipping Helm upgrade test due to infrastructure issue: ${errorMessage}`);
-        test.skip();
-        return;
-      }
-      
-      throw new Error(`Helm upgrade failed: ${errorMessage}`);
+      throw new Error(`Helm upgrade failed: ${upgradeResponse.error || 'Unknown error'}`);
     }
     
     expect(upgradeResponse.status).toBe("upgraded");
