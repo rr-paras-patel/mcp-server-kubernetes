@@ -321,6 +321,16 @@ describe("helm operations", () => {
 
     expect(installResult.content[0].type).toBe("text");
     const installResponse = JSON.parse(installResult.content[0].text);
+    
+    // Add debugging information
+    console.error("=== HELM INSTALL RESPONSE ===");
+    console.error(JSON.stringify(installResponse, null, 2));
+    console.error("=== END HELM INSTALL RESPONSE ===");
+    
+    if (installResponse.status === "failed") {
+      throw new Error(`Helm install failed: ${installResponse.error || 'Unknown error'}`);
+    }
+    
     expect(installResponse.status).toBe("installed");
 
     // Wait for initial deployment to be ready

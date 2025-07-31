@@ -300,12 +300,14 @@ export async function installHelmChart(params: {
   }
 
   try {
-    const args = ["install", params.name, params.chart, "--namespace", params.namespace];
-    
     // Add repository if provided
     if (params.repo) {
-      args.push("--repo", params.repo);
+      const repoName = params.chart.split("/")[0];
+      executeCommand("helm", ["repo", "add", repoName, params.repo]);
+      executeCommand("helm", ["repo", "update"]);
     }
+    
+    const args = ["install", params.name, params.chart, "--namespace", params.namespace];
     
     // Add create namespace flag if requested
     if (params.createNamespace !== false) {
@@ -373,12 +375,14 @@ export async function upgradeHelmChart(params: {
   valuesFile?: string;
 }): Promise<{ content: { type: string; text: string }[] }> {
   try {
-    const args = ["upgrade", params.name, params.chart, "--namespace", params.namespace];
-    
     // Add repository if provided
     if (params.repo) {
-      args.push("--repo", params.repo);
+      const repoName = params.chart.split("/")[0];
+      executeCommand("helm", ["repo", "add", repoName, params.repo]);
+      executeCommand("helm", ["repo", "update"]);
     }
+    
+    const args = ["upgrade", params.name, params.chart, "--namespace", params.namespace];
     
     // Add values file if provided
     if (params.valuesFile) {
