@@ -2,6 +2,8 @@ import { KubernetesManager } from "../types.js";
 import { execFileSync } from "child_process";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { getSpawnMaxBuffer } from "../config/max-buffer.js";
+import * as yaml from "js-yaml";
+import { contextParameter, namespaceParameter } from "../models/common-parameters.js";
 
 export const kubectlGetSchema = {
   name: "kubectl_get",
@@ -20,12 +22,7 @@ export const kubectlGetSchema = {
         description:
           "Name of the resource (optional - if not provided, lists all resources of the specified type)",
       },
-      namespace: {
-        type: "string",
-        description:
-          "Namespace of the resource (optional - defaults to 'default' for namespaced resources)",
-        default: "default",
-      },
+      namespace: namespaceParameter,
       output: {
         type: "string",
         enum: ["json", "yaml", "wide", "name", "custom"],
@@ -51,6 +48,7 @@ export const kubectlGetSchema = {
         description:
           "Sort events by a field (default: lastTimestamp). Only applicable for events.",
       },
+      context: contextParameter
     },
     required: ["resourceType", "name", "namespace"],
   },
@@ -67,6 +65,7 @@ export async function kubectlGet(
     labelSelector?: string;
     fieldSelector?: string;
     sortBy?: string;
+    context?: string;
   }
 ) {
   try {
@@ -78,6 +77,7 @@ export async function kubectlGet(
     const labelSelector = input.labelSelector || "";
     const fieldSelector = input.fieldSelector || "";
     const sortBy = input.sortBy;
+    const context = input.context || "";
 
     // Build the kubectl command
     const command = "kubectl";
@@ -101,6 +101,10 @@ export async function kubectlGet(
       args.push("--all-namespaces");
     } else if (namespace && !isNonNamespacedResource(resourceType)) {
       args.push("-n", namespace);
+    }
+
+    if (context) {
+      args.push("--context", context);
     }
 
     // Add label selector if provided
@@ -151,12 +155,21 @@ export async function kubectlGet(
         env: { ...process.env, KUBECONFIG: process.env.KUBECONFIG },
       });
 
+      // Apply secrets masking if enabled and dealing with secrets
+      const shouldMaskSecrets = process.env.MASK_SECRETS !== "false" && 
+        (resourceType === "secrets" || resourceType === "secret");
+      
+      let processedResult = result;
+      if (shouldMaskSecrets) {
+        processedResult = maskSecretsData(result, output);
+      }
+
       // Format the results for better readability
       const isListOperation = !name;
       if (isListOperation && output === "json") {
         try {
           // Parse JSON and extract key information
-          const parsed = JSON.parse(result);
+          const parsed = JSON.parse(processedResult);
 
           if (parsed.kind && parsed.kind.endsWith("List") && parsed.items) {
             if (resourceType === "events") {
@@ -211,7 +224,7 @@ export async function kubectlGet(
         content: [
           {
             type: "text",
-            text: result,
+            text: processedResult,
           },
         ],
       };
@@ -315,4 +328,96 @@ function isNonNamespacedResource(resourceType: string): boolean {
   ];
 
   return nonNamespacedResources.includes(resourceType.toLowerCase());
+}
+
+/**
+ * Recursively traverses an object and masks values in 'data' sections of Kubernetes secrets.
+ * 
+ * @param {any} obj - The object to traverse. Can be an array, object, or primitive value.
+ * @returns {any} A new object with masked values in 'data' sections.
+ */
+function maskDataValues(obj: any): any {
+  
+  if (obj == null) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => maskDataValues(item));
+  }
+  
+  if (typeof obj === "object") {
+    const result: any = {};
+    for (const key in obj) {
+      if (key === "data" && typeof obj[key] === "object" && obj[key] !== null) {
+        // This is a data section - mask all leaf values within it
+        result[key] = maskAllLeafValues(obj[key]);
+      } else {
+        result[key] = maskDataValues(obj[key]);
+      }
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
+/**
+ * Recursively masks all leaf values (non-object, non-array values) in an object structure.
+ * 
+ * @param {any} obj - The input object or value to process.
+ * @returns {any} A new object or value with all leaf values replaced by a mask.
+ */
+function maskAllLeafValues(obj: any): any {
+  const maskValue = "***";
+  
+  if (obj == null) {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => maskAllLeafValues(item));
+  }
+  
+  if (typeof obj === "object") {
+    const result: any = {};
+    for (const key in obj) {
+      result[key] = maskAllLeafValues(obj[key]);
+    }
+    return result;
+  }
+  
+  // This is a leaf value (string, number, boolean) - mask it
+  return maskValue;
+}
+
+/**
+ * Masks sensitive data in Kubernetes secrets by parsing the raw output and replacing
+ * all leaf values in the "data" section with a placeholder value ("***").
+ *
+ * @param {string} output - The raw output from a `kubectl` command, containing secrets data.
+ * @param {string} format - The format of the output, either "json" or "yaml".
+ * @returns {string} - The masked output in the same format as the input.
+ */
+function maskSecretsData(output: string, format: string): string {
+  try {
+    if (format === "json") {
+      const parsed = JSON.parse(output);
+      const masked = maskDataValues(parsed);
+      return JSON.stringify(masked, null, 2);
+    } else if (format === "yaml") {
+      // Parse YAML to JSON, mask, then convert back to YAML
+      const parsed = yaml.load(output);
+      const masked = maskDataValues(parsed);
+      return yaml.dump(masked, { 
+        indent: 2,
+        lineWidth: -1, // Don't wrap lines
+        noRefs: true   // Don't use references
+      });
+    }
+  } catch (error) {
+    console.warn("Failed to parse secrets output for masking:", error);
+  }
+  
+  return output;
 }

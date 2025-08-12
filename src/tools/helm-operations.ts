@@ -9,6 +9,7 @@ import { execFileSync } from "child_process";
 import { writeFileSync, unlinkSync } from "fs";
 import { dump } from "js-yaml";
 import { getSpawnMaxBuffer } from "../config/max-buffer.js";
+import { contextParameter, namespaceParameter } from "../models/common-parameters.js";
 
 /**
  * Schema for install_helm_chart tool.
@@ -35,10 +36,8 @@ export const installHelmChartSchema = {
         type: "string",
         description: "Chart name (e.g., 'nginx') or path to chart directory",
       },
-      namespace: {
-        type: "string",
-        description: "Kubernetes namespace to install the chart in",
-      },
+      namespace: namespaceParameter,
+      context: contextParameter,
       repo: {
         type: "string",
         description: "Helm repository URL (optional if using local chart path)",
@@ -89,10 +88,8 @@ export const upgradeHelmChartSchema = {
         type: "string",
         description: "Chart name or path to chart directory",
       },
-      namespace: {
-        type: "string",
-        description: "Kubernetes namespace where the release is installed",
-      },
+      namespace: namespaceParameter,
+      context: contextParameter,
       repo: {
         type: "string",
         description: "Helm repository URL (optional if using local chart path)",
@@ -125,10 +122,8 @@ export const uninstallHelmChartSchema = {
         type: "string",
         description: "Name of the Helm release to uninstall",
       },
-      namespace: {
-        type: "string",
-        description: "Kubernetes namespace where the release is installed",
-      },
+      namespace: namespaceParameter,
+      context: contextParameter,
     },
     required: ["name", "namespace"],
   },
