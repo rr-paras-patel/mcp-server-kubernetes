@@ -43,7 +43,7 @@ export const nodeManagementSchema = {
       },
       gracePeriod: {
         type: "number",
-        description: "Period of time in seconds given to each pod to terminate gracefully (for drain operation)",
+        description: "Period of time in seconds given to each pod to terminate gracefully (for drain operation). If set to -1, uses the kubectl default grace period.",
         default: -1,
       },
       deleteLocalData: {
