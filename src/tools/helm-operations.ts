@@ -224,7 +224,7 @@ async function installHelmChartTemplate(params: {
       
       try {
         executeCommand("kubectl", ["apply", "-f", tempYamlFile]);
-        steps.push(" Helm chart installed successfully using template mode");
+        steps.push("Helm chart installed successfully using template mode");
       } finally {
         // Clean up temp file
         unlinkSync(tempYamlFile);
