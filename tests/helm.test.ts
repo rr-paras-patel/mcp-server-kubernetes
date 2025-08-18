@@ -215,7 +215,6 @@ describe("helm operations", () => {
           errorMessage.includes("permission") ||
           errorMessage.includes("authentication")) {
         console.log(`Skipping Helm values validation test due to infrastructure issue: ${errorMessage}`);
-        test.skip();
         return;
       }
       
