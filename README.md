@@ -9,7 +9,6 @@
 [![Issues](https://img.shields.io/github/issues/Flux159/mcp-server-kubernetes)](https://github.com/Flux159/mcp-server-kubernetes/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Flux159/mcp-server-kubernetes/pulls)
 [![Last Commit](https://img.shields.io/github/last-commit/Flux159/mcp-server-kubernetes)](https://github.com/Flux159/mcp-server-kubernetes/commits/main)
-
 [![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/Flux159/mcp-server-kubernetes)](https://archestra.ai/mcp-catalog/flux159__mcp-server-kubernetes)
 [![smithery badge](https://smithery.ai/badge/mcp-server-kubernetes)](https://smithery.ai/protocol/mcp-server-kubernetes)
 
