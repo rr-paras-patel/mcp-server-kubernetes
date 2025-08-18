@@ -448,7 +448,7 @@ describe("helm operations", () => {
           errorMessage.includes("permission") ||
           errorMessage.includes("authentication")) {
         console.log(`Skipping Helm upgrade test due to infrastructure issue: ${errorMessage}`);
-        test.skip();
+        console.warn(`Skipping Helm upgrade test due to infrastructure issue: ${errorMessage}`);
         return;
       }
       
