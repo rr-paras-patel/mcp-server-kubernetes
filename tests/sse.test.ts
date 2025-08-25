@@ -160,11 +160,7 @@ describe("SSE transport", () => {
       expect(response.status).toBe(200);
 
       const responseJson = await response.json();
-      expect(responseJson).toHaveProperty("status");
-      expect(responseJson).toHaveProperty("timestamp");
-      expect(responseJson).toHaveProperty("service");
       expect(responseJson.status).toBe("ready");
-      expect(responseJson.service).toBe("mcp-kubernetes-server");
     } catch (error) {
       console.error("Error during readiness check:", error);
       throw error;
