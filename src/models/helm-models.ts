@@ -11,13 +11,15 @@ export const HelmResponseSchema = z.object({
 
 export const HelmValuesSchema = z.record(z.any());
 
-export interface HelmOperation {
+export interface HelmUninstallOperation {
   name: string;
   namespace: string;
 }
 
-export interface HelmInstallOperation extends HelmOperation {
+export interface HelmInstallOperation {
+  name: string;
   chart: string;
+  namespace: string;
   repo?: string;
   values?: Record<string, any>;
   valuesFile?: string;
@@ -25,7 +27,14 @@ export interface HelmInstallOperation extends HelmOperation {
   useTemplate?: boolean;
 }
 
-export interface HelmUpgradeOperation extends HelmInstallOperation {}
+export interface HelmUpgradeOperation {
+  name: string;
+  chart: string;
+  namespace: string;
+  repo?: string;
+  values?: Record<string, any>;
+  valuesFile?: string;
+}
 
 export type HelmResponse = {
   status: "installed" | "upgraded" | "uninstalled" | "failed";

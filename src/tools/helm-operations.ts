@@ -10,6 +10,7 @@ import { writeFileSync, unlinkSync } from "fs";
 import { dump } from "js-yaml";
 import { getSpawnMaxBuffer } from "../config/max-buffer.js";
 import { contextParameter, namespaceParameter } from "../models/common-parameters.js";
+import { HelmInstallOperation, HelmUpgradeOperation, HelmUninstallOperation } from "../models/helm-models.js";
 
 /**
  * Schema for install_helm_chart tool.
@@ -279,16 +280,7 @@ async function installHelmChartTemplate(params: {
  * @param params - Installation parameters
  * @returns Promise with installation result
  */
-export async function installHelmChart(params: {
-  name: string;
-  chart: string;
-  namespace: string;
-  repo?: string;
-  values?: object;
-  valuesFile?: string;
-  useTemplate?: boolean;
-  createNamespace?: boolean;
-}): Promise<{ content: { type: string; text: string }[] }> {
+export async function installHelmChart(params: HelmInstallOperation): Promise<{ content: { type: string; text: string }[] }> {
   // Use template mode if requested
   if (params.useTemplate) {
     return installHelmChartTemplate(params);
@@ -361,14 +353,7 @@ export async function installHelmChart(params: {
  * @param params - Upgrade parameters
  * @returns Promise with upgrade result
  */
-export async function upgradeHelmChart(params: {
-  name: string;
-  chart: string;
-  namespace: string;
-  repo?: string;
-  values?: object;
-  valuesFile?: string;
-}): Promise<{ content: { type: string; text: string }[] }> {
+export async function upgradeHelmChart(params: HelmUpgradeOperation): Promise<{ content: { type: string; text: string }[] }> {
   try {
     // Add repository if provided
     if (params.repo) {
@@ -431,10 +416,7 @@ export async function upgradeHelmChart(params: {
  * @param params - Uninstall parameters
  * @returns Promise with uninstall result
  */
-export async function uninstallHelmChart(params: {
-  name: string;
-  namespace: string;
-}): Promise<{ content: { type: string; text: string }[] }> {
+export async function uninstallHelmChart(params: HelmUninstallOperation): Promise<{ content: { type: string; text: string }[] }> {
   try {
     executeCommand("helm", ["uninstall", params.name, "--namespace", params.namespace]);
 
