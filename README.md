@@ -158,7 +158,7 @@ npx mcp-chat --config "%APPDATA%\Claude\claude_desktop_config.json"
 
 The MCP Kubernetes server includes specialized prompts to assist with common diagnostic operations.
 
-### k8s-diagnose Prompt
+### /k8s-diagnose Prompt
 
 This prompt provides a systematic troubleshooting flow for Kubernetes pods. It accepts a `keyword` to identify relevant pods and an optional `namespace` to narrow the search.
 The prompt's output will guide you through an autonomous troubleshooting flow, providing instructions for identifying issues, collecting evidence, and suggesting remediation steps.
