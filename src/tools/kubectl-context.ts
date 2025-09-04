@@ -88,6 +88,13 @@ export async function kubectlContext(
           const authInfoPos = headerLine.indexOf("AUTHINFO");
           const namespacePos = headerLine.indexOf("NAMESPACE");
 
+          if (currentPos === -1 || namePos === -1 || clusterPos === -1 || authInfoPos === -1 || namespacePos === -1) {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              "Invalid kubectl output format"
+            );
+          }
+
           const contexts = [];
           for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
