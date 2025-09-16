@@ -274,6 +274,12 @@
         }
       }
     },
+    "startupProbe": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"}
+      }
+    },
     "livenessProbe": {
       "type": "object",
       "properties": {

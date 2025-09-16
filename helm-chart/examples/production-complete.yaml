@@ -6,7 +6,7 @@
 
 image:
   repository: flux159/mcp-server-kubernetes
-  tag: "2.8.0"
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 # Common labels and annotations for all resources
@@ -28,18 +28,16 @@ transport:
     type: ClusterIP
     port: 3001
     annotations:
-      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-type: "alb"
       service.beta.kubernetes.io/aws-load-balancer-internal: "true"
   
   ingress:
     enabled: true
     className: "nginx"
     annotations:
-      cert-manager.io/cluster-issuer: "letsencrypt-prod"
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/auth-type: basic
-      nginx.ingress.kubernetes.io/auth-secret: mcp-server-auth
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/healthcheck-path: /health
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
     hosts:
       - host: mcp-server.company.com
         paths:
@@ -229,6 +227,10 @@ resources:
     cpu: 500m
     memory: 512Mi
 
+
+startupProbe:
+  enabled: false
+
 # Health checks
 livenessProbe:
   enabled: true
@@ -243,7 +245,7 @@ livenessProbe:
 readinessProbe:
   enabled: true
   httpGet:
-    path: /ready
+    path: /health
     port: 3001
   initialDelaySeconds: 5
   periodSeconds: 5

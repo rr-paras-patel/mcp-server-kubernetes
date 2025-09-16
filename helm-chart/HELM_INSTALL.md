@@ -65,13 +65,13 @@ helm install mcp-server-k8s ./helm-chart \
   --set transport.ingress.enabled=true \
   --set transport.ingress.hosts[0].host=mcp-server.company.com
 
-# AWS with NLB (recommended for MCP streaming)  
+# AWS with ALB (recommended for MCP streaming)  
 helm install mcp-server-k8s ./helm-chart \
   --set transport.mode=http \
   --set transport.service.type=LoadBalancer \
-  --set transport.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb" \
+  --set transport.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="alb" \
   --set transport.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-internal"="true"
-
+  
 # NGINX Ingress with streaming support
 helm install mcp-server-k8s ./helm-chart \
   --set transport.mode=http \

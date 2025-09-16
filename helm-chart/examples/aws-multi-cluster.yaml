@@ -6,7 +6,7 @@
 
 image:
   repository: flux159/mcp-server-kubernetes
-  tag: "2.8.0"
+  tag: "latest"
 
 # HTTP transport for web accessibility
 transport:
