@@ -13,39 +13,25 @@
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/dist/index.js"
-      ]
+      "args": ["${__dirname}/dist/index.js"]
     }
   },
   "tools": [
     {
       "name": "ping",
-      "description": "Verify that the counterpart is still responsive and the connection is alive.",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "Verify that the counterpart is still responsive and the connection is alive."
     },
     {
       "name": "cleanup",
-      "description": "Cleanup all managed resources",
-      "annotations": {
-        "destructiveHint": true
-      }
+      "description": "Cleanup all managed resources"
     },
     {
       "name": "kubectl_get",
-      "description": "Get or list Kubernetes resources by resource type, name, and optionally namespace",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "Get or list Kubernetes resources by resource type, name, and optionally namespace"
     },
     {
       "name": "kubectl_describe",
-      "description": "Describe Kubernetes resources by resource type, name, and optionally namespace",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "Describe Kubernetes resources by resource type, name, and optionally namespace"
     },
     {
       "name": "kubectl_apply",
@@ -53,10 +39,7 @@
     },
     {
       "name": "kubectl_delete",
-      "description": "Delete Kubernetes resources by resource type, name, labels, or from a manifest file",
-      "annotations": {
-        "destructiveHint": true
-      }
+      "description": "Delete Kubernetes resources by resource type, name, labels, or from a manifest file"
     },
     {
       "name": "kubectl_create",
@@ -64,10 +47,7 @@
     },
     {
       "name": "kubectl_logs",
-      "description": "Get logs from Kubernetes resources like pods, deployments, or jobs",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "Get logs from Kubernetes resources like pods, deployments, or jobs"
     },
     {
       "name": "kubectl_patch",
@@ -83,17 +63,11 @@
     },
     {
       "name": "kubectl_context",
-      "description": "Manage Kubernetes contexts - list, get, or set the current context",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "Manage Kubernetes contexts - list, get, or set the current context"
     },
     {
       "name": "kubectl_generic",
-      "description": "Execute any kubectl command with the provided arguments and flags",
-      "annotations": {
-        "destructiveHint": true
-      }
+      "description": "Execute any kubectl command with the provided arguments and flags"
     },
     {
       "name": "install_helm_chart",
@@ -105,31 +79,19 @@
     },
     {
       "name": "uninstall_helm_chart",
-      "description": "Uninstall a Helm release",
-      "annotations": {
-        "destructiveHint": true
-      }
+      "description": "Uninstall a Helm release"
     },
     {
       "name": "explain_resource",
-      "description": "Get documentation for a Kubernetes resource or field",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "Get documentation for a Kubernetes resource or field"
     },
     {
       "name": "list_api_resources",
-      "description": "List the API resources available in the cluster",
-      "annotations": {
-        "readOnlyHint": true
-      }
+      "description": "List the API resources available in the cluster"
     },
     {
       "name": "node_management",
-      "description": "Manage Kubernetes nodes with cordon, drain, and uncordon operations",
-      "annotations": {
-        "destructiveHint": true
-      }
+      "description": "Manage Kubernetes nodes with cordon, drain, and uncordon operations"
     },
     {
       "name": "exec_in_pod",
@@ -144,12 +106,7 @@
       "description": "Stop a port-forward process"
     }
   ],
-  "keywords": [
-    "kubernetes",
-    "docker",
-    "containers",
-    "containerization"
-  ],
+  "keywords": ["kubernetes", "docker", "containers", "containerization"],
   "license": "MIT",
   "repository": {
     "type": "git",
