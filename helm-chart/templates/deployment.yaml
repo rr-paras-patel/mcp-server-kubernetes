@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: {{ include "mcp-server-kubernetes.fullname" . }}
   labels:
+    krupesh: {{ include "mcp-server-kubernetes.needsInitContainer" . | quote }}
     {{- include "mcp-server-kubernetes.labels" . | nindent 4 }}
   {{- $commonAnnotations := include "mcp-server-kubernetes.annotations" . }}
   {{- if $commonAnnotations }}
@@ -64,9 +65,9 @@ spec:
           env:
             # Retry configuration for init container
             - name: MAX_RETRIES
-              value: {{ .Values.kubeconfig.initContainer.maxRetries | default 3 | quote }}
+              value: {{ .Values.kubeconfig.initContainer.maxRetries | quote }}
             - name: RETRY_DELAY  
-              value: {{ .Values.kubeconfig.initContainer.retryDelay | default 10 | quote }}
+              value: {{ .Values.kubeconfig.initContainer.retryDelay | quote }}
             {{- range $key, $value := .Values.kubeconfig.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
@@ -146,7 +147,6 @@ spec:
           volumeMounts:
             - name: kubeconfig-volume
               mountPath: /kubeconfig
-              readOnly: true
             {{- range .Values.volumeMounts }}
             - {{- toYaml . | nindent 14 }}
             {{- end }}

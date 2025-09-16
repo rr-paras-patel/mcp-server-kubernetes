@@ -103,30 +103,30 @@ Get the appropriate init container image based on provider with architecture sup
 Determine if we need an init container
 */}}
 {{- define "mcp-server-kubernetes.needsInitContainer" -}}
-{{- if or (eq .Values.kubeconfig.provider "aws") (eq .Values.kubeconfig.provider "gcp") (eq .Values.kubeconfig.provider "azure") (eq .Values.kubeconfig.provider "url") (eq .Values.kubeconfig.provider "custom") }}
+{{- if or (eq .Values.kubeconfig.provider "aws") (eq .Values.kubeconfig.provider "gcp") (eq .Values.kubeconfig.provider "azure") (eq .Values.kubeconfig.provider "url") (eq .Values.kubeconfig.provider "custom") -}}
 true
-{{- else }}
+{{- else -}}
 false
-{{- end }}
+{{- end -}}
 {{- end }}
 
 {{/*
 Generate kubeconfig environment variable based on provider
 */}}
 {{- define "mcp-server-kubernetes.kubeconfigEnv" -}}
-{{- if eq .Values.kubeconfig.provider "url" }}
-{{- $files := list }}
-{{- range .Values.kubeconfig.url.configs }}
-{{- $files = append $files (printf "/kubeconfig/%s.yaml" .name) }}
-{{- end }}
-{{- $files | join ":" }}
-{{- else if eq .Values.kubeconfig.provider "content" }}
-/kubeconfig/kubeconfig.yaml
-{{- else if eq .Values.kubeconfig.provider "serviceaccount" }}
-{{- /* ServiceAccount mode doesn't need KUBECONFIG env var */ -}}
-{{- else }}
-/kubeconfig/kubeconfig
-{{- end }}
+{{- if eq .Values.kubeconfig.provider "url" -}}
+  {{- $files := list -}}
+  {{- range .Values.kubeconfig.url.configs -}}
+    {{- $files = append $files (printf "/kubeconfig/%s.yaml" .name) -}}
+  {{- end -}}
+  {{- $files | join ":" -}}
+{{- else if eq .Values.kubeconfig.provider "content" -}}
+  /kubeconfig/kubeconfig.yaml
+{{- else if eq .Values.kubeconfig.provider "serviceaccount" -}}
+  {{- /* ServiceAccount mode doesn't need KUBECONFIG env var */ -}}
+{{- else -}}
+  /kubeconfig/kubeconfig
+{{- end -}}
 {{- end }}
 
 {{/*
