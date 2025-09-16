@@ -32,6 +32,16 @@ transport:
 
 # AWS EKS multi-cluster configuration
 kubeconfig:
+  initContainer:
+    maxRetries: 3
+    retryDelay: 10
+    resources:
+      limits:
+        cpu: 250m
+        memory: 200Mi
+      requests:
+        cpu: 250m
+        memory: 200Mi
   provider: "aws"
   aws:
     clusters:
@@ -43,9 +53,7 @@ kubeconfig:
         extraArgs:
           - "--profile=production"
           - "--alias=prod-east"
-          - "--external-id=mcp-server-prod"
-          - "--session-name=mcp-prod-session"
-          
+
       # Production US-West cluster  
       - name: "prod-us-west"
         clusterName: "company-prod-us-west"
@@ -54,9 +62,7 @@ kubeconfig:
         extraArgs:
           - "--profile=production"
           - "--alias=prod-west"
-          - "--external-id=mcp-server-prod"
-          - "--session-name=mcp-prod-session"
-          
+
       # Staging cluster (different account)
       - name: "staging-us-east"
         clusterName: "company-staging"
@@ -65,9 +71,7 @@ kubeconfig:
         extraArgs:
           - "--profile=staging"
           - "--alias=staging"
-          - "--external-id=mcp-server-staging"
-          - "--duration-seconds=3600"
-          
+
       # Development cluster (limited permissions)
       - name: "dev-us-central"
         clusterName: "company-dev"
@@ -76,8 +80,7 @@ kubeconfig:
         extraArgs:
           - "--profile=development" 
           - "--alias=dev"
-          - "--no-include-email"
-          
+
     defaultContext: "prod-us-east"
     
   # Environment variables for AWS authentication
