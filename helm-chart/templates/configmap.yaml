@@ -49,7 +49,7 @@ data:
     
     {{- range .Values.kubeconfig.aws.clusters }}
     # Fetch cluster: {{ .name }}
-    AWS_CMD="aws eks update-kubeconfig --name {{ .clusterName | quote }} --region {{ .region | quote }}{{- if .roleArn }} --role-arn {{ .roleArn | quote }}{{- end }} --kubeconfig $KUBECONFIG{{- range .extraArgs }} {{ . | quote }}{{- end }}"
+    AWS_CMD="aws eks update-kubeconfig --name {{ .clusterName | quote }} --region {{ .region | quote }}{{- if .roleArn }} --role-arn {{ .roleArn | quote }}{{- end }}{{- if .assumeRoleArn }} --assume-role-arn {{ .assumeRoleArn | quote }}{{- end }} --kubeconfig $KUBECONFIG{{- range .extraArgs }} {{ . | quote }}{{- end }}"
     retry_command "$AWS_CMD" "Fetching EKS cluster {{ .name }}"
     {{- end }}
   {{- end }}

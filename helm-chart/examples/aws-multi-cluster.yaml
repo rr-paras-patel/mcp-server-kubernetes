@@ -58,6 +58,7 @@ kubeconfig:
       - name: "prod-us-west"
         clusterName: "company-prod-us-west"
         region: "us-west-2"
+        assumeRoleArn: "arn:aws:iam::123456789012:role/ProductionAccountAccessRole"
         roleArn: "arn:aws:iam::123456789012:role/EKSClusterAdminRole"
         extraArgs:
           - "--profile=production"
@@ -66,7 +67,8 @@ kubeconfig:
       # Staging cluster (different account)
       - name: "staging-us-east"
         clusterName: "company-staging"
-        region: "us-east-1"  
+        region: "us-east-1"
+        assumeRoleArn: "arn:aws:iam::987654321098:role/OrganizationAccountAccessRole"
         roleArn: "arn:aws:iam::987654321098:role/EKSReadOnlyRole"
         extraArgs:
           - "--profile=staging"
