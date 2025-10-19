@@ -84,11 +84,6 @@
    {{- range .Values.kubeconfig.gcp.clusters }}
    - {{ .name }}: {{ .clusterName }} ({{ .zone | default .region }})
    {{- end }}
-   {{- else if eq .Values.kubeconfig.provider "azure" }}
-   Azure Clusters: {{ len .Values.kubeconfig.azure.clusters }}
-   {{- range .Values.kubeconfig.azure.clusters }}
-   - {{ .name }}: {{ .clusterName }} ({{ .resourceGroup }})
-   {{- end }}
    {{- else if eq .Values.kubeconfig.provider "url" }}
    URL Configs: {{ len .Values.kubeconfig.url.configs }}
    {{- range .Values.kubeconfig.url.configs }}

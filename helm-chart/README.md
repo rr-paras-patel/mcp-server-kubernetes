@@ -111,14 +111,6 @@ helm install mcp-server-k8s ./helm-chart \
   --set serviceAccount.annotations."iam\.gke\.io/gcp-service-account"="mcp-server@my-project.iam.gserviceaccount.com"
 ```
 
-### Azure Workload Identity
-```bash
-helm install mcp-server-k8s ./helm-chart \
-  --set serviceAccount.annotations."azure\.workload\.identity/client-id"="12345678-1234-1234-1234-123456789012" \
-  --set serviceAccount.annotations."azure\.workload\.identity/tenant-id"="87654321-4321-4321-4321-210987654321" \
-  --set serviceAccount.annotations."azure\.workload\.identity/use"="true"
-```
-
 ## Security Configuration
 
 ### Non-Destructive Mode (Safe Operations Only)

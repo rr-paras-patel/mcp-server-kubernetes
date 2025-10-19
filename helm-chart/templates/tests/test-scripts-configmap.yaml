@@ -89,45 +89,7 @@ data:
     
     echo "GCP kubeconfig test completed successfully"
   {{- end }}
-  
-  {{- if eq .Values.kubeconfig.provider "azure" }}
-  test-azure-kubeconfig.sh: |
-    #!/bin/sh
-    set -e
-    echo "Testing Azure AKS kubeconfig fetch..."
-    
-    export KUBECONFIG=/kubeconfig/kubeconfig
-    touch $KUBECONFIG
-    
-    {{- range .Values.kubeconfig.azure.clusters }}
-    echo "Testing cluster: {{ .name }}"
-    az aks show \
-      --name {{ .clusterName | quote }} \
-      --resource-group {{ .resourceGroup | quote }} \
-      {{- if .subscription }}
-      --subscription {{ .subscription | quote }} \
-      {{- end }}
-      >/dev/null || {
-      echo "ERROR: Cannot access AKS cluster {{ .name }}"
-      exit 1
-    }
-    echo "✓ AKS cluster {{ .name }} is accessible"
-    
-    az aks get-credentials \
-      --name {{ .clusterName | quote }} \
-      --resource-group {{ .resourceGroup | quote }} \
-      {{- if .subscription }}
-      --subscription {{ .subscription | quote }} \
-      {{- end }}
-      --file $KUBECONFIG \
-      {{- range .extraArgs }}
-      {{ . | quote }} \
-      {{- end }}
-    {{- end }}
-    
-    echo "Azure kubeconfig test completed successfully"
-  {{- end }}
-  
+
   {{- if eq .Values.kubeconfig.provider "url" }}
   test-url-kubeconfig.sh: |
     #!/bin/sh
