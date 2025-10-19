@@ -83,9 +83,9 @@ transport:
 
 # Kubeconfig configuration
 kubeconfig:
-  # Provider type: aws, gcp, azure, url, serviceaccount, custom, content
+  # Provider type: aws, gcp, url, serviceaccount, custom, content
   provider: "serviceaccount"
-  
+
   # AWS EKS configuration
   aws:
     clusters: []
@@ -105,7 +105,7 @@ kubeconfig:
     #     extraArgs:
     #       - "--profile=staging"
     defaultContext: ""
-    
+
   # GCP GKE configuration
   gcp:
     clusters: []
@@ -121,23 +121,6 @@ kubeconfig:
     #     clusterName: "staging-gke"
     #     zone: "us-central1-b"
     #     project: "company-staging"
-    defaultContext: ""
-    
-  # Azure AKS configuration
-  azure:
-    clusters: []
-    # Example:
-    # clusters:
-    #   - name: "prod-cluster"
-    #     clusterName: "prod-aks"
-    #     resourceGroup: "prod-rg"
-    #     subscription: "prod-sub-id"
-    #     extraArgs:
-    #       - "--admin"
-    #   - name: "dev-cluster"
-    #     clusterName: "dev-aks"
-    #     resourceGroup: "dev-rg"
-    #     subscription: "dev-sub-id"
     defaultContext: ""
     
   # URL-based configuration
@@ -245,11 +228,6 @@ serviceAccount:
   # annotations:
   #   iam.gke.io/gcp-service-account: "mcp-server@my-project.iam.gserviceaccount.com"
   #
-  # Azure Workload Identity:
-  # annotations:
-  #   azure.workload.identity/client-id: "12345678-1234-1234-1234-123456789012"
-  #   azure.workload.identity/tenant-id: "87654321-4321-4321-4321-210987654321"
-  #   azure.workload.identity/use: "true"
   #
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
@@ -541,10 +519,6 @@ networkPolicy:
     # podSelector:
     #   matchLabels:
     #     k8s-app: kube-dns
-    # Azure AKS DNS:
-    # podSelector:
-    #   matchLabels:
-    #     k8s-app: kube-dns
     # Custom DNS:
     # podSelector:
     #   matchLabels:
@@ -559,7 +533,6 @@ networkPolicy:
     # Alternative CIDRs for different environments:
     # GKE default: "10.96.0.0/12"
     # EKS default: "10.100.0.0/16" or "172.20.0.0/16"
-    # AKS default: "10.0.0.0/16"
     # Custom: specify your cluster's service CIDR
   
   # Cloud provider API access (for kubeconfig providers)
@@ -576,17 +549,13 @@ networkPolicy:
     # gcpCidrs:
     #   - "35.199.0.0/16"  # Google APIs
     #   - "199.36.153.8/30" # metadata.google.internal
-    # azureCidrs:
-    #   - "20.0.0.0/8"     # Azure public cloud
   
   # Metadata services access
   metadata:
     # Enable access to cloud metadata services
     enabled: true
-    # AWS/GCP metadata service
-    awsGcpMetadata: "169.254.169.254/32"
-    # Azure metadata service  
-    azureMetadata: "169.254.169.254/32"
+    # Cloud provider metadata service (AWS/GCP use same IP: 169.254.169.254)
+    cloudMetadata: "169.254.169.254/32"
   
   # Ingress rules - traffic coming TO the pod
   # By default, all ingress is DENIED. Add rules to allow specific traffic.

@@ -173,25 +173,6 @@ networkPolicy:
       ports:
         - protocol: TCP
           port: 443  # GCP APIs
-    
-    # REQUIRED for Azure: Azure metadata and API access
-    - to:
-        - ipBlock:
-            cidr: 169.254.169.254/32  # Azure metadata service
-      ports:
-        - protocol: TCP
-          port: 80
-    
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-            except:
-              - 10.0.0.0/8
-              - 172.16.0.0/12
-              - 192.168.0.0/16
-      ports:
-        - protocol: TCP
-          port: 443  # Azure APIs
 
 # Resource limits
 resources:
@@ -208,7 +189,7 @@ resources:
 # 2. EGRESS REQUIREMENTS: You MUST allow egress traffic for:
 #    - DNS resolution (kube-dns/coredns)
 #    - Kubernetes API server access  
-#    - Cloud provider APIs (AWS/GCP/Azure)
+#    - Cloud provider APIs (AWS/GCP)
 #    - Metadata services (169.254.169.254)
 # 3. CLUSTER-SPECIFIC: Adjust CIDR blocks and selectors for your cluster:
 #    - Service CIDR (usually 10.96.0.0/12 or 172.20.0.0/16)

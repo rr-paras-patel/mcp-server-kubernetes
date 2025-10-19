@@ -52,9 +52,6 @@ spec:
           {{- else if eq .Values.kubeconfig.provider "gcp" }}
           command: ["/bin/sh"]
           args: ["/scripts/fetch-gcp-kubeconfig.sh"]
-          {{- else if eq .Values.kubeconfig.provider "azure" }}
-          command: ["/bin/sh"]
-          args: ["/scripts/fetch-azure-kubeconfig.sh"]
           {{- else if eq .Values.kubeconfig.provider "url" }}
           command: ["/bin/sh"]
           args: ["/scripts/fetch-url-kubeconfig.sh"]

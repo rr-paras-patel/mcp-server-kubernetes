@@ -16,6 +16,5 @@ keywords:
   - k8s
   - eks
   - gke
-  - aks
 annotations:
   category: Infrastructure

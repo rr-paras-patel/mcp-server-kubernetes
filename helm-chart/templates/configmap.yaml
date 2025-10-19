@@ -104,58 +104,7 @@ data:
     echo "GCP kubeconfig setup complete"
     kubectl config get-contexts --kubeconfig=$KUBECONFIG
   {{- end }}
-  
-  {{- if eq .Values.kubeconfig.provider "azure" }}
-  fetch-azure-kubeconfig.sh: |
-    #!/bin/sh
-    set -e
-    echo "Fetching Azure AKS kubeconfigs..."
-    
-    # Retry configuration
-    MAX_RETRIES=${MAX_RETRIES:-3}
-    RETRY_DELAY=${RETRY_DELAY:-10}
-    
-    export KUBECONFIG=/kubeconfig/kubeconfig
-    touch $KUBECONFIG
-    
-    # Function to retry commands
-    retry_command() {
-      local cmd="$1"
-      local description="$2"
-      local attempt=1
-      
-      while [ $attempt -le $MAX_RETRIES ]; do
-        echo "Attempt $attempt/$MAX_RETRIES: $description"
-        if eval "$cmd"; then
-          echo "✓ Success: $description"
-          return 0
-        else
-          if [ $attempt -eq $MAX_RETRIES ]; then
-            echo "✗ Failed after $MAX_RETRIES attempts: $description"
-            return 1
-          fi
-          echo "⚠ Attempt $attempt failed, retrying in ${RETRY_DELAY}s..."
-          sleep $RETRY_DELAY
-        fi
-        attempt=$((attempt + 1))
-      done
-    }
-    
-    {{- range .Values.kubeconfig.azure.clusters }}
-    # Fetch cluster: {{ .name }}
-    AZURE_CMD="az aks get-credentials --name {{ .clusterName | quote }} --resource-group {{ .resourceGroup | quote }}{{- if .subscription }} --subscription {{ .subscription | quote }}{{- end }} --file $KUBECONFIG{{- range .extraArgs }} {{ . | quote }}{{- end }}"
-    retry_command "$AZURE_CMD" "Fetching AKS cluster {{ .name }}"
-    {{- end }}
-    
-    {{- if .Values.kubeconfig.azure.defaultContext }}
-    echo "Setting default context: {{ .Values.kubeconfig.azure.defaultContext }}"
-    kubectl config use-context {{ .Values.kubeconfig.azure.defaultContext | quote }} --kubeconfig=$KUBECONFIG
-    {{- end }}
-    
-    echo "Azure kubeconfig setup complete"
-    kubectl config get-contexts --kubeconfig=$KUBECONFIG
-  {{- end }}
-  
+
   {{- if eq .Values.kubeconfig.provider "url" }}
   fetch-url-kubeconfig.sh: |
     #!/bin/sh

@@ -139,35 +139,16 @@ spec:
           port: 443
     {{- end }}
     {{- end }}
-    {{- if .Values.networkPolicy.cloudProviderApi.azureCidrs }}
-    # Azure API access
-    {{- range .Values.networkPolicy.cloudProviderApi.azureCidrs }}
-    - to:
-        - ipBlock:
-            cidr: {{ . }}
-      ports:
-        - protocol: TCP
-          port: 443
-    {{- end }}
-    {{- end }}
     {{- end }}
     {{- end }}
     {{- if .Values.networkPolicy.metadata.enabled }}
     # Auto-generated metadata service egress rules
     - to:
         - ipBlock:
-            cidr: {{ .Values.networkPolicy.metadata.awsGcpMetadata }}
+            cidr: {{ .Values.networkPolicy.metadata.cloudMetadata }}
       ports:
         - protocol: TCP
           port: 80
-    {{- if ne .Values.networkPolicy.metadata.awsGcpMetadata .Values.networkPolicy.metadata.azureMetadata }}
-    - to:
-        - ipBlock:
-            cidr: {{ .Values.networkPolicy.metadata.azureMetadata }}
-      ports:
-        - protocol: TCP
-          port: 80
-    {{- end }}
     {{- end }}
     {{- if .Values.networkPolicy.egress }}
     # User-defined egress rules

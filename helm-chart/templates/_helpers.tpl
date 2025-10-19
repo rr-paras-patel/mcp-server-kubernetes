@@ -82,8 +82,6 @@ Get the appropriate init container image based on provider with architecture sup
 {{- $baseImage = "amazon/aws-cli" }}
 {{- else if eq .Values.kubeconfig.provider "gcp" }}
 {{- $baseImage = "gcr.io/google.com/cloudsdktool/cloud-sdk" }}
-{{- else if eq .Values.kubeconfig.provider "azure" }}
-{{- $baseImage = "mcr.microsoft.com/azure-cli" }}
 {{- else if eq .Values.kubeconfig.provider "url" }}
 {{- $baseImage = "curlimages/curl" }}
 {{- else if eq .Values.kubeconfig.provider "custom" }}
@@ -103,7 +101,7 @@ Get the appropriate init container image based on provider with architecture sup
 Determine if we need an init container
 */}}
 {{- define "mcp-server-kubernetes.needsInitContainer" -}}
-{{- if or (eq .Values.kubeconfig.provider "aws") (eq .Values.kubeconfig.provider "gcp") (eq .Values.kubeconfig.provider "azure") (eq .Values.kubeconfig.provider "url") (eq .Values.kubeconfig.provider "custom") -}}
+{{- if or (eq .Values.kubeconfig.provider "aws") (eq .Values.kubeconfig.provider "gcp") (eq .Values.kubeconfig.provider "url") (eq .Values.kubeconfig.provider "custom") -}}
 true
 {{- else -}}
 false

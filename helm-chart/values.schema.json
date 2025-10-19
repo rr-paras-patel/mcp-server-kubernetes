@@ -74,7 +74,7 @@
     "kubeconfig": {
       "type": "object",
       "properties": {
-        "provider": {"type": "string", "enum": ["aws", "gcp", "azure", "url", "serviceaccount", "custom", "content"]},
+        "provider": {"type": "string", "enum": ["aws", "gcp", "url", "serviceaccount", "custom", "content"]},
         "aws": {
           "type": "object",
           "properties": {
@@ -115,26 +115,6 @@
                   {"required": ["zone"]},
                   {"required": ["region"]}
                 ]
-              }
-            },
-            "defaultContext": {"type": "string"}
-          }
-        },
-        "azure": {
-          "type": "object",
-          "properties": {
-            "clusters": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "name": {"type": "string"},
-                  "clusterName": {"type": "string"},
-                  "resourceGroup": {"type": "string"},
-                  "subscription": {"type": "string"},
-                  "extraArgs": {"type": "array", "items": {"type": "string"}}
-                },
-                "required": ["name", "clusterName", "resourceGroup"]
               }
             },
             "defaultContext": {"type": "string"}

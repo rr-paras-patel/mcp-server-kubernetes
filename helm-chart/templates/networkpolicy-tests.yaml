@@ -159,7 +159,7 @@ spec:
           port: 443
     
     # Allow cloud provider API access for kubeconfig tests
-    {{- if or (eq .Values.kubeconfig.provider "aws") (eq .Values.kubeconfig.provider "gcp") (eq .Values.kubeconfig.provider "azure") }}
+    {{- if or (eq .Values.kubeconfig.provider "aws") (eq .Values.kubeconfig.provider "gcp") }}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
