@@ -130,7 +130,7 @@ npx mcp-chat --config "%APPDATA%\Claude\claude_desktop_config.json"
 
 ## Gemini CLI
 
-At the shell install the extension by pointing to this repo:
+[Gemini CLI](https://geminicli.com/) allows you to install mcp servers as extensions. From a shell, install the extension by pointing to this repo:
 
 ```shell
 gemini extensions install https://github.com/Flux159/mcp-server-kubernetes
