@@ -45,7 +45,7 @@ export class KubernetesManager {
         );
       }
     } else if (this.hasEnvMinimalKubeconfig()) {
-      // Priority 3: Minimal config with K8S_SERVER and K8S_TOKEN (MUST come before in-cluster check!)
+      // Priority 3: Minimal config with K8S_SERVER and K8S_TOKEN
       try {
         this.loadEnvMinimalKubeconfig();
         // Create temp kubeconfig file for kubectl commands from minimal config
