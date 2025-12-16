@@ -74,8 +74,11 @@ For simple server + token authentication:
 ```bash
 export K8S_SERVER='https://your-cluster.example.com'
 export K8S_TOKEN='eyJhbGciOiJSUzI1NiIsImtpZCI6...'
+export K8S_CA_DATA='LS0tLS1CRUdJTi...'  # optional, base64-encoded CA certificate
 export K8S_SKIP_TLS_VERIFY='false'  # optional, defaults to false
 ```
+
+The `K8S_CA_DATA` environment variable accepts a base64-encoded CA certificate (same format as `certificate-authority-data` in kubeconfig). This allows secure TLS verification without requiring a full kubeconfig file.
 
 #### Custom Kubeconfig Path
 
@@ -102,6 +105,7 @@ These overrides work with any of the authentication methods above.
 # Option 1: Using minimal config with overrides
 export K8S_SERVER='https://prod-cluster.example.com'
 export K8S_TOKEN='eyJhbGciOiJSUzI1NiIsImtpZCI6...'
+export K8S_CA_DATA='LS0tLS1CRUdJTi...'  # base64-encoded CA certificate
 export K8S_CONTEXT='production'
 export K8S_NAMESPACE='my-app'
 export K8S_SKIP_TLS_VERIFY='false'
@@ -125,6 +129,7 @@ For Claude Desktop with environment variables:
       "env": {
         "K8S_SERVER": "https://prod-cluster.example.com",
         "K8S_TOKEN": "your-token-here",
+        "K8S_CA_DATA": "LS0tLS1CRUdJTi...",
         "K8S_CONTEXT": "production",
         "K8S_NAMESPACE": "my-app"
       }

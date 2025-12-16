@@ -25,8 +25,7 @@ export class KubernetesManager {
         this.createTempKubeconfigFromYaml(process.env.KUBECONFIG_YAML!);
       } catch (error) {
         throw new Error(
-          `Failed to parse KUBECONFIG_YAML: ${
-            error instanceof Error ? error.message : "Unknown error"
+          `Failed to parse KUBECONFIG_YAML: ${error instanceof Error ? error.message : "Unknown error"
           }`
         );
       }
@@ -42,8 +41,7 @@ export class KubernetesManager {
         this.createTempKubeconfigFromYaml(yamlConfig);
       } catch (error) {
         throw new Error(
-          `Failed to parse KUBECONFIG_JSON: ${
-            error instanceof Error ? error.message : "Unknown error"
+          `Failed to parse KUBECONFIG_JSON: ${error instanceof Error ? error.message : "Unknown error"
           }`
         );
       }
@@ -56,8 +54,7 @@ export class KubernetesManager {
         this.createTempKubeconfigFromYaml(yamlConfig);
       } catch (error) {
         throw new Error(
-          `Failed to create kubeconfig from K8S_SERVER and K8S_TOKEN: ${
-            error instanceof Error ? error.message : "Unknown error"
+          `Failed to create kubeconfig from K8S_SERVER and K8S_TOKEN: ${error instanceof Error ? error.message : "Unknown error"
           }`
         );
       }
@@ -69,8 +66,7 @@ export class KubernetesManager {
         process.env.KUBECONFIG = process.env.KUBECONFIG_PATH;
       } catch (error) {
         throw new Error(
-          `Failed to load kubeconfig from KUBECONFIG_PATH: ${
-            error instanceof Error ? error.message : "Unknown error"
+          `Failed to load kubeconfig from KUBECONFIG_PATH: ${error instanceof Error ? error.message : "Unknown error"
           }`
         );
       }
@@ -88,8 +84,7 @@ export class KubernetesManager {
         this.setCurrentContext(process.env.K8S_CONTEXT);
       } catch (error) {
         console.warn(
-          `Warning: Could not set context to ${process.env.K8S_CONTEXT}: ${
-            error instanceof Error ? error.message : "Unknown error"
+          `Warning: Could not set context to ${process.env.K8S_CONTEXT}: ${error instanceof Error ? error.message : "Unknown error"
           }`
         );
       }
@@ -185,6 +180,7 @@ export class KubernetesManager {
       name: "env-cluster",
       server: process.env.K8S_SERVER,
       skipTLSVerify: process.env.K8S_SKIP_TLS_VERIFY === "true",
+      caData: process.env.K8S_CA_DATA || undefined,
     };
 
     const user = {
