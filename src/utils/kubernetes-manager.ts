@@ -30,11 +30,8 @@ export class KubernetesManager {
           }`
         );
       }
-    } else if (this.isRunningInCluster()) {
-      // Priority 2: Check if running in cluster
-      this.kc.loadFromCluster();
     } else if (this.hasEnvKubeconfigJson()) {
-      // Priority 3: Full kubeconfig as JSON string
+      // Priority 2: Full kubeconfig as JSON string
       try {
         this.loadEnvKubeconfigJson();
         // Create temp kubeconfig file for kubectl commands from JSON
@@ -48,7 +45,7 @@ export class KubernetesManager {
         );
       }
     } else if (this.hasEnvMinimalKubeconfig()) {
-      // Priority 4: Minimal config with individual environment variables
+      // Priority 3: Minimal config with K8S_SERVER and K8S_TOKEN
       try {
         this.loadEnvMinimalKubeconfig();
         // Create temp kubeconfig file for kubectl commands from minimal config
@@ -61,6 +58,9 @@ export class KubernetesManager {
           }`
         );
       }
+    } else if (this.isRunningInCluster()) {
+      // Priority 4: Check if running in cluster
+      this.kc.loadFromCluster();
     } else if (this.hasEnvKubeconfigPath()) {
       // Priority 5: Custom kubeconfig file path using KUBECONFIG_PATH
       try {
