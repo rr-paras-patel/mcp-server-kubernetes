@@ -185,6 +185,7 @@ export class KubernetesManager {
       name: "env-cluster",
       server: process.env.K8S_SERVER,
       skipTLSVerify: process.env.K8S_SKIP_TLS_VERIFY === "true",
+      caData: process.env.K8S_CA_DATA || undefined,
     };
 
     const user = {
