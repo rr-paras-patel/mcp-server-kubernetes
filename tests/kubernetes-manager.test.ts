@@ -424,6 +424,28 @@ current-context: test-context`;
         );
       });
 
+      test("should force skipTLSVerify to false when K8S_CA_DATA is set even if K8S_SKIP_TLS_VERIFY is true", () => {
+        process.env.K8S_SERVER = "https://test-cluster.example.com";
+        process.env.K8S_TOKEN = "test-token-12345";
+        process.env.K8S_CA_DATA = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t";
+        process.env.K8S_SKIP_TLS_VERIFY = "true";
+
+        kubernetesManager = new KubernetesManager();
+        const kubeConfig = kubernetesManager.getKubeConfig();
+
+        // Verify skipTLSVerify is forced to false when K8S_CA_DATA is provided
+        expect(kubeConfig.loadFromOptions).toHaveBeenCalledWith(
+          expect.objectContaining({
+            clusters: expect.arrayContaining([
+              expect.objectContaining({
+                caData: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t",
+                skipTLSVerify: false,
+              }),
+            ]),
+          })
+        );
+      });
+
       test("should not include caData when K8S_CA_DATA is not set", () => {
         process.env.K8S_SERVER = "https://test-cluster.example.com";
         process.env.K8S_TOKEN = "test-token-12345";

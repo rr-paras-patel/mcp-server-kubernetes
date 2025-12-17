@@ -181,10 +181,14 @@ export class KubernetesManager {
       );
     }
 
+    // When K8S_CA_DATA is provided, force skipTLSVerify to false as they are incompatible
+    const hasCAData = !!(process.env.K8S_CA_DATA && process.env.K8S_CA_DATA.trim());
+    const skipTLSVerify = hasCAData ? false : process.env.K8S_SKIP_TLS_VERIFY === "true";
+
     const cluster = {
       name: "env-cluster",
       server: process.env.K8S_SERVER,
-      skipTLSVerify: process.env.K8S_SKIP_TLS_VERIFY === "true",
+      skipTLSVerify,
       caData: process.env.K8S_CA_DATA || undefined,
     };
 
