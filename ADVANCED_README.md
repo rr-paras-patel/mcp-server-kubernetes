@@ -80,6 +80,8 @@ export K8S_SKIP_TLS_VERIFY='false'  # optional, defaults to false
 
 The `K8S_CA_DATA` environment variable accepts a base64-encoded CA certificate (same format as `certificate-authority-data` in kubeconfig). This allows secure TLS verification without requiring a full kubeconfig file.
 
+**Note:** `K8S_CA_DATA` and `K8S_SKIP_TLS_VERIFY=true` are incompatible. When `K8S_CA_DATA` is provided, `K8S_SKIP_TLS_VERIFY` is automatically forced to `false`. Kubernetes throws an error when both TLS verification is skipped and CA data is provided.
+
 #### Custom Kubeconfig Path
 
 Specify a custom path to your kubeconfig file:
