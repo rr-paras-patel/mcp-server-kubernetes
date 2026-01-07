@@ -14,7 +14,6 @@ import {
   ListDeploymentsResponseSchema,
   DescribeNodeResponseSchema,
 } from "../src/models/response-schemas.js";
-import { ScaleDeploymentResponseSchema } from "../src/models/response-schemas.js";
 // Add KubectlResponseSchema for the unified kubectl commands
 import { KubectlResponseSchema } from "../src/models/kubectl-models.js";
 import { z } from "zod";
@@ -684,12 +683,13 @@ describe("kubernetes server operations", () => {
    * Tests creating a deployment with a custom configuration
    */
   test("custom deployment configuration", async () => {
-    const deploymentName = `test-deployment-${generateRandomSHA()}-${Date.now()}`;
     let attempts = 0;
     const maxAttempts = 3;
     const waitTime = 2000;
 
     while (attempts < maxAttempts) {
+      // Generate unique deployment name for each attempt to avoid "AlreadyExists" errors on retry
+      const deploymentName = `test-deployment-${generateRandomSHA()}-${Date.now()}`;
       try {
         // Create deployment using kubectl_create with manifest
         const deploymentManifest = {
@@ -790,7 +790,7 @@ describe("kubernetes server operations", () => {
         expect(deployment.metadata.name).toBe(deploymentName);
         expect(deployment.spec.replicas).toBe(1);
 
-        // Replace the old scale_deployment test with kubectl_scale 
+        // Replace the old scale_deployment test with kubectl_scale
         const scaleDeploymentResult = await client.request(
           {
             method: "tools/call",
@@ -804,14 +804,16 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          asResponseSchema(ScaleDeploymentResponseSchema)
+          asResponseSchema(KubectlResponseSchema)
         );
 
-        expect(scaleDeploymentResult.content[0].success).toBe(true);
-        expect(scaleDeploymentResult.content[0].message).toContain(
+        expect(scaleDeploymentResult.content[0].type).toBe("text");
+        const scaleResult1 = JSON.parse(scaleDeploymentResult.content[0].text);
+        expect(scaleResult1.success).toBe(true);
+        expect(scaleResult1.message).toContain(
           `Scaled deployment ${deploymentName} to 2 replicas`
         );
-        
+
         // Test scaling to a different number of replicas
         const kubectlScaleResult = await client.request(
           {
@@ -826,11 +828,13 @@ describe("kubernetes server operations", () => {
               },
             },
           },
-          asResponseSchema(ScaleDeploymentResponseSchema)
+          asResponseSchema(KubectlResponseSchema)
         );
 
-        expect(kubectlScaleResult.content[0].success).toBe(true);
-        expect(kubectlScaleResult.content[0].message).toContain(
+        expect(kubectlScaleResult.content[0].type).toBe("text");
+        const scaleResult2 = JSON.parse(kubectlScaleResult.content[0].text);
+        expect(scaleResult2.success).toBe(true);
+        expect(scaleResult2.message).toContain(
           `Scaled deployment ${deploymentName} to 3 replicas`
         );
 
@@ -868,7 +872,7 @@ describe("kubernetes server operations", () => {
         await sleep(waitTime);
       }
     }
-  });
+  }, { timeout: 120000 });
 
   /**
    * Test case: Verify ping support
