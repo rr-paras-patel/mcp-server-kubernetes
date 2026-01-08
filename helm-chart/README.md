@@ -55,6 +55,46 @@ helm install mcp-server-k8s ./helm-chart \
   --set kubeconfig.url.configs[1].url="https://storage.company.com/staging.yaml"
 ```
 
+### Custom Volume-based Kubeconfig
+
+Use this provider when you want to provide your own volume (Secret, ConfigMap, etc.) containing the kubeconfig. All volume configuration is grouped under `kubeconfig.volume`:
+
+```bash
+helm install mcp-server-k8s ./helm-chart \
+  --set kubeconfig.provider=volume \
+  --set kubeconfig.volume.path=/home/node/.kube/config \
+  --set kubeconfig.volume.volumeSpec.name=kubeconfig \
+  --set kubeconfig.volume.volumeSpec.secret.secretName=my-kubeconfig-secret \
+  --set kubeconfig.volume.volumeMountSpec.name=kubeconfig \
+  --set kubeconfig.volume.volumeMountSpec.mountPath=/home/node/.kube \
+  --set kubeconfig.volume.volumeMountSpec.readOnly=true
+```
+
+Or using a values file:
+
+```yaml
+kubeconfig:
+  provider: volume
+  volume:
+    path: /home/node/.kube/config
+    volumeSpec:
+      name: kubeconfig
+      secret:
+        secretName: my-kubeconfig-secret
+    volumeMountSpec:
+      name: kubeconfig
+      mountPath: /home/node/.kube
+      readOnly: true
+```
+
+This provider is useful when:
+- You have a pre-existing Secret or ConfigMap with kubeconfig
+- You need full control over the volume definition
+- You want to avoid init containers for kubeconfig fetching
+- You're using external secret management tools (External Secrets Operator, Sealed Secrets, etc.)
+
+**Note:** Additional volumes can still be added using `.Values.volumes` and `.Values.volumeMounts` for other purposes
+
 ### Web-Accessible (HTTP Transport)
 
 ```bash
