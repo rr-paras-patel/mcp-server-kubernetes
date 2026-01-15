@@ -75,7 +75,7 @@
     "kubeconfig": {
       "type": "object",
       "properties": {
-        "provider": {"type": "string", "enum": ["aws", "gcp", "url", "serviceaccount", "custom", "content"]},
+        "provider": {"type": "string", "enum": ["aws", "gcp", "url", "serviceaccount", "custom", "content", "volume"]},
         "aws": {
           "type": "object",
           "properties": {
@@ -146,6 +146,15 @@
           }
         },
         "content": {"type": "string"},
+        "volume": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "volumeSpec": {"type": "object"},
+            "volumeMountSpec": {"type": "object"}
+          },
+          "required": ["path", "volumeSpec", "volumeMountSpec"]
+        },
         "env": {"type": "object"},
         "initContainer": {
           "type": "object",

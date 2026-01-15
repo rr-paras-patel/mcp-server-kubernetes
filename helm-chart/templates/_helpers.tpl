@@ -109,6 +109,17 @@ false
 {{- end }}
 
 {{/*
+Determine if we need kubeconfig volume mounts
+*/}}
+{{- define "mcp-server-kubernetes.needsKubeconfigVolume" -}}
+{{- if or (eq .Values.kubeconfig.provider "volume") (eq .Values.kubeconfig.provider "content") (eq (include "mcp-server-kubernetes.needsInitContainer" .) "true") -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- end }}
+
+{{/*
 Generate kubeconfig environment variable based on provider
 */}}
 {{- define "mcp-server-kubernetes.kubeconfigEnv" -}}
@@ -120,6 +131,8 @@ Generate kubeconfig environment variable based on provider
   {{- $files | join ":" -}}
 {{- else if eq .Values.kubeconfig.provider "content" -}}
   /kubeconfig/kubeconfig.yaml
+{{- else if eq .Values.kubeconfig.provider "volume" -}}
+  {{- .Values.kubeconfig.volume.path | default "/kubeconfig/config" -}}
 {{- else if eq .Values.kubeconfig.provider "serviceaccount" -}}
   {{- /* ServiceAccount mode doesn't need KUBECONFIG env var */ -}}
 {{- else -}}

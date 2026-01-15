@@ -125,7 +125,7 @@ spec:
             {{- end }}
             
             # Kubeconfig configuration
-            {{- if ne .Values.kubeconfig.provider "serviceaccount" }}
+            {{- if eq (include "mcp-server-kubernetes.needsKubeconfigVolume" .) "true" }}
             {{- $kubeconfigPath := include "mcp-server-kubernetes.kubeconfigEnv" . }}
             {{- if $kubeconfigPath }}
             - name: KUBECONFIG
@@ -145,17 +145,18 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-          {{- if ne .Values.kubeconfig.provider "serviceaccount" }}
+          {{- if or (eq (include "mcp-server-kubernetes.needsKubeconfigVolume" .) "true") .Values.volumeMounts }}
           volumeMounts:
+            {{- if eq (include "mcp-server-kubernetes.needsKubeconfigVolume" .) "true" }}
+              {{- if ne .Values.kubeconfig.provider "volume" }}
             - name: kubeconfig-volume
               mountPath: /kubeconfig
-            {{- range .Values.volumeMounts }}
-            - {{- toYaml . | nindent 14 }}
+              {{- else if .Values.kubeconfig.volume.volumeMountSpec }}
+            {{- list .Values.kubeconfig.volume.volumeMountSpec | toYaml | nindent 12 }}
+              {{- end }}
             {{- end }}
-          {{- else }}
-          volumeMounts:
-            {{- range .Values.volumeMounts }}
-            - {{- toYaml . | nindent 12 }}
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
           {{- $startupProbe := include "mcp-server-kubernetes.startupProbe" . }}
@@ -175,6 +176,7 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      {{- if or (ne (include "mcp-server-kubernetes.needsInitContainer" .) "false") (eq .Values.kubeconfig.provider "content") (and (eq .Values.kubeconfig.provider "volume") .Values.kubeconfig.volume.volumeSpec) .Values.volumes }}
       volumes:
         {{- if eq (include "mcp-server-kubernetes.needsInitContainer" .) "true" }}
         - name: kubeconfig-volume
@@ -188,10 +190,13 @@ spec:
           secret:
             secretName: {{ include "mcp-server-kubernetes.fullname" . }}-kubeconfig
             defaultMode: 0600
+        {{- else if and (eq .Values.kubeconfig.provider "volume") .Values.kubeconfig.volume.volumeSpec }}
+        {{- list .Values.kubeconfig.volume.volumeSpec | toYaml | nindent 8 }}
         {{- end }}
-        {{- range .Values.volumes }}
-        - {{- toYaml . | nindent 10 }}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
+      {{- end }}
       {{- $nodeSelector := include "mcp-server-kubernetes.nodeSelector" . }}
       {{- if $nodeSelector }}
       nodeSelector:
