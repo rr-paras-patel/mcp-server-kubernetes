@@ -1,5 +1,6 @@
 import { trace, context, SpanStatusCode, Span } from "@opentelemetry/api";
 import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { getTelemetryConfig } from "../config/telemetry-config.js";
 
 /**
  * Telemetry middleware for MCP tool call tracing
@@ -68,6 +69,56 @@ export function withTelemetry(handler: ToolCallHandler): ToolCallHandler {
           const duration = Date.now() - startTime;
           span.setAttribute("tool.duration_ms", duration);
           span.setStatus({ code: SpanStatusCode.OK });
+
+          // Capture response metadata (not the actual data)
+          // Can be disabled with OTEL_CAPTURE_RESPONSE_METADATA=false for privacy
+          const telemetryConfig = getTelemetryConfig();
+          if (result && telemetryConfig.captureResponseMetadata) {
+            // Check if result has content array (MCP response format)
+            if (result.content && Array.isArray(result.content)) {
+              span.setAttribute("response.content_items", result.content.length);
+
+              // Get the first content item to analyze
+              if (result.content.length > 0) {
+                const firstItem = result.content[0];
+                span.setAttribute("response.content_type", firstItem.type || "unknown");
+
+                // If it's text content, capture size and maybe a snippet
+                if (firstItem.type === "text" && firstItem.text) {
+                  const textSize = firstItem.text.length;
+                  span.setAttribute("response.text_size_bytes", textSize);
+
+                  // Try to parse JSON and get item count
+                  try {
+                    const parsed = JSON.parse(firstItem.text);
+
+                    // Check for Kubernetes list response
+                    if (parsed.items && Array.isArray(parsed.items)) {
+                      span.setAttribute("response.k8s_items_count", parsed.items.length);
+                      span.setAttribute("response.k8s_kind", parsed.kind || "unknown");
+                    }
+
+                    // Check for MCP list response
+                    if (Array.isArray(parsed)) {
+                      span.setAttribute("response.items_count", parsed.length);
+                    }
+
+                    // Capture if response indicates success
+                    if (parsed.success !== undefined) {
+                      span.setAttribute("response.success", parsed.success);
+                    }
+                  } catch (e) {
+                    // Not JSON, that's fine - just capture text size
+                  }
+                }
+              }
+            }
+
+            // Check for direct success indicators
+            if (typeof result.success === "boolean") {
+              span.setAttribute("response.success", result.success);
+            }
+          }
 
           return result;
         } catch (error: any) {

@@ -2,6 +2,9 @@
 
 The Kubernetes MCP Server includes optional OpenTelemetry integration for distributed tracing, enabling comprehensive observability of tool executions, performance monitoring, and error tracking.
 
+> **Current Release**: Distributed Tracing ✅
+> **Coming Soon**: Metrics and Logs
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -13,6 +16,7 @@ The Kubernetes MCP Server includes optional OpenTelemetry integration for distri
 - [Production Best Practices](#production-best-practices)
 - [Troubleshooting](#troubleshooting)
 - [Performance](#performance)
+- [Roadmap](#roadmap)
 
 ---
 
@@ -95,6 +99,7 @@ podman run -d --name jaeger \
 | `OTEL_TRACES_SAMPLER_ARG` | No | - | Sampling ratio (0.0-1.0) for `traceidratio` sampler |
 | `OTEL_SERVICE_NAME` | No | `kubernetes` | Service identifier in tracing backend |
 | `OTEL_RESOURCE_ATTRIBUTES` | No | - | Custom attributes (format: `key1=value1,key2=value2`) |
+| `OTEL_CAPTURE_RESPONSE_METADATA` | No | `true` | Capture response metadata (item counts, sizes). Set to `false` for privacy |
 
 **Required to enable observability*
 
@@ -316,21 +321,34 @@ Every tool call creates a span with the following attributes:
 #### Network Attributes
 - `network.transport`: "pipe" (STDIO mode)
 
+#### Response Attributes (optional)
+Captured by default, can be disabled with `OTEL_CAPTURE_RESPONSE_METADATA=false`:
+- `response.content_items`: Number of content blocks in response
+- `response.content_type`: Content type (text, json, etc.)
+- `response.text_size_bytes`: Response size in bytes
+- `response.k8s_items_count`: Number of Kubernetes resources returned
+- `response.k8s_kind`: Kubernetes resource kind (PodList, NodeList, etc.)
+
+**Use cases**: Track response sizes, debug empty results, monitor data growth.
+
 ### Example Span
 
 ```json
 {
   "spanName": "tools/call kubectl_get",
-  "duration": "123ms",
+  "duration": "1915ms",
   "attributes": {
     "mcp.method.name": "tools/call",
     "gen_ai.tool.name": "kubectl_get",
     "gen_ai.operation.name": "execute_tool",
-    "tool.duration_ms": 123,
+    "tool.duration_ms": 1915,
     "tool.argument_count": 3,
     "tool.argument_keys": "resourceType,namespace,output",
     "k8s.namespace": "default",
-    "k8s.resource_type": "pods"
+    "k8s.resource_type": "deployments",
+    "response.k8s_items_count": 92,
+    "response.text_size_bytes": 16851,
+    "response.content_type": "text"
   },
   "status": "OK"
 }
@@ -716,6 +734,26 @@ env:
 
 ### Q: Does this expose sensitive data?
 **A**: No, we don't capture argument values, only argument keys. Secrets are not exposed.
+
+---
+
+## Roadmap
+
+### Upcoming Features
+
+#### Metrics (Planned)
+Prometheus-compatible metrics endpoint for:
+- Tool execution counters
+- Response time histograms
+- Error rate tracking
+- Resource usage metrics
+
+#### Logs (Planned)
+Structured logging integration:
+- Correlated with traces
+- JSON format output
+- Configurable log levels
+- Backend export support
 
 ---
 

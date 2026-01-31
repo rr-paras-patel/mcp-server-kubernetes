@@ -21,6 +21,7 @@ export interface TelemetryConfig {
     type: "always_on" | "always_off" | "traceidratio";
     arg?: number;
   };
+  captureResponseMetadata: boolean; // NEW: Control response metadata capture
 }
 
 /**
@@ -84,6 +85,10 @@ export function getTelemetryConfig(): TelemetryConfig {
   // 2. OTEL_EXPORTER_OTLP_ENDPOINT is configured
   const enabled = isExplicitlyEnabled && !!endpoint;
 
+  // Check if response metadata capture is enabled (default: true)
+  const captureResponseEnv = process.env.OTEL_CAPTURE_RESPONSE_METADATA;
+  const captureResponseMetadata = captureResponseEnv !== "false" && captureResponseEnv !== "0";
+
   return {
     enabled,
     endpoint,
@@ -91,6 +96,7 @@ export function getTelemetryConfig(): TelemetryConfig {
     serviceVersion: process.env.OTEL_SERVICE_VERSION || serverConfig.version,
     resourceAttributes: parseResourceAttributes(),
     sampler: parseSamplerConfig(),
+    captureResponseMetadata, // Enabled by default, can be disabled with OTEL_CAPTURE_RESPONSE_METADATA=false
   };
 }
 
