@@ -1,6 +1,16 @@
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "../../package.json"), "utf-8")
+);
+
 export const serverConfig = {
   name: "kubernetes",
-  version: "0.1.0",
+  version: packageJson.version,
   capabilities: {
     resources: {},
     tools: {},
