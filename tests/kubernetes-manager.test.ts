@@ -618,4 +618,98 @@ current-context: test-context`;
       });
     });
   });
+
+  describe("degraded mode when API client init fails", () => {
+    test("constructor should not throw when makeApiClient fails", () => {
+      delete process.env.KUBECONFIG_YAML;
+      delete process.env.KUBECONFIG_JSON;
+      delete process.env.K8S_SERVER;
+      delete process.env.K8S_TOKEN;
+      delete process.env.KUBECONFIG_PATH;
+      delete process.env.KUBECONFIG;
+      delete process.env.K8S_CONTEXT;
+      (fs.existsSync as any).mockReturnValue(false);
+
+      const KubeConfigMock = k8s.KubeConfig as any;
+      const instance = {
+        loadFromDefault: vi.fn(),
+        loadFromCluster: vi.fn(),
+        loadFromString: vi.fn(),
+        loadFromOptions: vi.fn(),
+        loadFromFile: vi.fn(),
+        makeApiClient: vi.fn().mockImplementation(() => {
+          throw new Error("No active cluster!");
+        }),
+        getCurrentContext: vi.fn().mockReturnValue(""),
+        getClusters: vi.fn().mockReturnValue([]),
+        getUsers: vi.fn().mockReturnValue([]),
+        getContexts: vi.fn().mockReturnValue([]),
+        setCurrentContext: vi.fn(),
+        exportConfig: vi.fn().mockReturnValue(""),
+      };
+      KubeConfigMock.mockImplementation(() => instance);
+
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      expect(() => {
+        kubernetesManager = new KubernetesManager();
+      }).not.toThrow();
+
+      expect(kubernetesManager.getClientInitError()?.message).toBe(
+        "No active cluster!"
+      );
+      expect(kubernetesManager.hasClientInitError()).toBe(true);
+
+      expect(() => kubernetesManager.getCoreApi()).toThrow(
+        /Kubernetes configuration error: No active cluster!/
+      );
+
+      errorSpy.mockRestore();
+    });
+
+    test("refreshApiClients recovers from degraded mode when cluster becomes available", () => {
+      delete process.env.KUBECONFIG_YAML;
+      delete process.env.KUBECONFIG_JSON;
+      delete process.env.K8S_SERVER;
+      delete process.env.K8S_TOKEN;
+      delete process.env.KUBECONFIG_PATH;
+      delete process.env.KUBECONFIG;
+      delete process.env.K8S_CONTEXT;
+      (fs.existsSync as any).mockReturnValue(false);
+
+      let fail = true;
+      const KubeConfigMock = k8s.KubeConfig as any;
+      const instance = {
+        loadFromDefault: vi.fn(),
+        loadFromCluster: vi.fn(),
+        loadFromString: vi.fn(),
+        loadFromOptions: vi.fn(),
+        loadFromFile: vi.fn(),
+        makeApiClient: vi.fn().mockImplementation(() => {
+          if (fail) {
+            throw new Error("No active cluster!");
+          }
+          return {};
+        }),
+        getCurrentContext: vi.fn().mockReturnValue(""),
+        getClusters: vi.fn().mockReturnValue([]),
+        getUsers: vi.fn().mockReturnValue([]),
+        getContexts: vi.fn().mockReturnValue([]),
+        setCurrentContext: vi.fn(),
+        exportConfig: vi.fn().mockReturnValue(""),
+      };
+      KubeConfigMock.mockImplementation(() => instance);
+
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      kubernetesManager = new KubernetesManager();
+      expect(kubernetesManager.hasClientInitError()).toBe(true);
+
+      fail = false;
+      expect(() => kubernetesManager.refreshApiClients()).not.toThrow();
+      expect(kubernetesManager.hasClientInitError()).toBe(false);
+      expect(kubernetesManager.getCoreApi()).toBeTruthy();
+
+      errorSpy.mockRestore();
+    });
+  });
 });

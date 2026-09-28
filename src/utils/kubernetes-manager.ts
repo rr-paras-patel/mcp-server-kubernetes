@@ -11,9 +11,11 @@ export class KubernetesManager {
   private portForwards: PortForwardTracker[] = [];
   private watches: WatchTracker[] = [];
   private kc: k8s.KubeConfig;
-  private k8sApi: k8s.CoreV1Api;
-  private k8sAppsApi: k8s.AppsV1Api;
-  private k8sBatchApi: k8s.BatchV1Api;
+  private k8sApi: k8s.CoreV1Api | undefined;
+  private k8sAppsApi: k8s.AppsV1Api | undefined;
+  private k8sBatchApi: k8s.BatchV1Api | undefined;
+  /** Set when API client construction fails (e.g. no active cluster/context). */
+  private clientInitError: Error | undefined;
 
   constructor() {
     this.kc = new k8s.KubeConfig();
@@ -95,10 +97,50 @@ export class KubernetesManager {
       }
     }
 
-    // Initialize API clients
-    this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
-    this.k8sAppsApi = this.kc.makeApiClient(k8s.AppsV1Api);
-    this.k8sBatchApi = this.kc.makeApiClient(k8s.BatchV1Api);
+    // Initialize API clients in degraded mode on failure so MCP initialize
+    // can still succeed when kubeconfig has no usable current-context.
+    this.tryInitApiClients();
+  }
+
+  /**
+   * Attempt to build Kubernetes API clients. On failure, keep the process
+   * alive in a degraded state; getters and refresh will surface the error.
+   */
+  private tryInitApiClients(): void {
+    try {
+      this.refreshApiClients();
+    } catch (error) {
+      this.clientInitError =
+        error instanceof Error ? error : new Error(String(error));
+      this.k8sApi = undefined;
+      this.k8sAppsApi = undefined;
+      this.k8sBatchApi = undefined;
+      console.error(
+        `Warning: Kubernetes API clients not initialized: ${this.clientInitError.message}`
+      );
+    }
+  }
+
+  /**
+   * Ensure API clients exist, retrying construction if we started degraded.
+   * Throws a clear configuration error if the kubeconfig still has no active cluster.
+   */
+  private ensureApiClients(): void {
+    if (this.k8sApi && this.k8sAppsApi && this.k8sBatchApi) {
+      return;
+    }
+    try {
+      this.refreshApiClients();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : this.clientInitError?.message || String(error);
+      throw new Error(
+        `Kubernetes configuration error: ${message}. ` +
+          "Set a valid current-context in your kubeconfig (or via K8S_CONTEXT / kubectl_context) before using cluster tools."
+      );
+    }
   }
 
   /**
@@ -235,6 +277,7 @@ export class KubernetesManager {
     this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
     this.k8sAppsApi = this.kc.makeApiClient(k8s.AppsV1Api);
     this.k8sBatchApi = this.kc.makeApiClient(k8s.BatchV1Api);
+    this.clientInitError = undefined;
   }
 
   public setCurrentContext(contextName: string) {
@@ -250,11 +293,9 @@ export class KubernetesManager {
         )}`
       );
     }
-    // Set the current context
+    // Set the current context and rebuild clients (recovers from degraded mode)
     this.kc.setCurrentContext(contextName);
-    this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
-    this.k8sAppsApi = this.kc.makeApiClient(k8s.AppsV1Api);
-    this.k8sBatchApi = this.kc.makeApiClient(k8s.BatchV1Api);
+    this.refreshApiClients();
   }
 
   async cleanup() {
@@ -284,18 +325,21 @@ export class KubernetesManager {
   }
 
   async deleteResource(kind: string, name: string, namespace: string) {
+    const coreApi = this.getCoreApi();
+    const appsApi = this.getAppsApi();
+    const batchApi = this.getBatchApi();
     switch (kind.toLowerCase()) {
       case "pod":
-        await this.k8sApi.deleteNamespacedPod({ name, namespace });
+        await coreApi.deleteNamespacedPod({ name, namespace });
         break;
       case "deployment":
-        await this.k8sAppsApi.deleteNamespacedDeployment({ name, namespace });
+        await appsApi.deleteNamespacedDeployment({ name, namespace });
         break;
       case "service":
-        await this.k8sApi.deleteNamespacedService({ name, namespace });
+        await coreApi.deleteNamespacedService({ name, namespace });
         break;
       case "cronjob":
-        await this.k8sBatchApi.deleteNamespacedCronJob({ name, namespace });
+        await batchApi.deleteNamespacedCronJob({ name, namespace });
         break;
     }
     this.resources = this.resources.filter(
@@ -324,15 +368,29 @@ export class KubernetesManager {
   }
 
   getCoreApi() {
-    return this.k8sApi;
+    this.ensureApiClients();
+    return this.k8sApi!;
   }
 
   getAppsApi() {
-    return this.k8sAppsApi;
+    this.ensureApiClients();
+    return this.k8sAppsApi!;
   }
 
   getBatchApi() {
-    return this.k8sBatchApi;
+    this.ensureApiClients();
+    return this.k8sBatchApi!;
+  }
+
+  /**
+   * True when API clients failed to initialize (e.g. empty current-context).
+   */
+  hasClientInitError(): boolean {
+    return !!this.clientInitError || !this.k8sApi;
+  }
+
+  getClientInitError(): Error | undefined {
+    return this.clientInitError;
   }
 
   /**
