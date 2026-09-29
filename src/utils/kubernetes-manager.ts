@@ -138,7 +138,7 @@ export class KubernetesManager {
           : this.clientInitError?.message || String(error);
       throw new Error(
         `Kubernetes configuration error: ${message}. ` +
-          "Set a valid current-context in your kubeconfig (or via K8S_CONTEXT / kubectl_context) before using cluster tools."
+          "Set a valid current-context in your kubeconfig (or via K8S_CONTEXT) and restart the server."
       );
     }
   }
