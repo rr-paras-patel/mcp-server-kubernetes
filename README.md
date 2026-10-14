@@ -111,6 +111,25 @@ Cursor supports MCP servers through its AI integration. Add the server to your C
 
 The server will automatically connect to your current kubectl context. You can verify the connection by asking the AI assistant to list your pods or create a test deployment.
 
+### Muse Code
+
+[Muse Code](https://dev.meta.ai/docs/muse-code/extending#mcp) reads MCP servers from the `mcp_servers` block of `~/.config/muse/settings.json`. The file must include `"schema_version": 1`:
+
+```json
+{
+  "schema_version": 1,
+  "mcp_servers": {
+    "kubernetes": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["mcp-server-kubernetes"]
+    }
+  }
+}
+```
+
+Start a new Muse Code session after editing the file, then run `/mcp` to confirm the `kubernetes` server and its tools are connected.
+
 ## Usage with mcp-chat
 
 [mcp-chat](https://github.com/Flux159/mcp-chat) is a CLI chat client for MCP servers. You can use it to interact with the Kubernetes server.
