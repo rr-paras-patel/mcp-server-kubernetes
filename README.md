@@ -128,6 +128,29 @@ The server will automatically connect to your current kubectl context. You can v
 }
 ```
 
+To connect over Streamable HTTP instead, first start the server in HTTP mode (it serves `/mcp` on port `3000` by default; see [Streamable HTTP Transport](ADVANCED_README.md#streamable-http-transport)):
+
+```bash
+ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT=1 npx mcp-server-kubernetes
+```
+
+Then point Muse Code at that endpoint with the `streamable_http` transport (`headers` is optional):
+
+```json
+{
+  "schema_version": 1,
+  "mcp_servers": {
+    "kubernetes": {
+      "transport": "streamable_http",
+      "url": "http://localhost:3000/mcp",
+      "mode": "optional"
+    }
+  }
+}
+```
+
+`"mode": "optional"` lets Muse Code start with a warning if the HTTP server isn't running, instead of aborting.
+
 Start a new Muse Code session after editing the file, then run `/mcp` to confirm the `kubernetes` server and its tools are connected.
 
 ## Usage with mcp-chat
